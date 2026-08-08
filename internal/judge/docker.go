@@ -37,11 +37,14 @@ func (d dockerRunner) run(ctx context.Context, workdir string, timeout time.Dura
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
+	// --cpus は当初0.5だったが、Gin/GORM等リンクが重いレッスンで
+	// 実測7〜23秒とばらつき、まれにタイムアウトしていた。1.0にしたところ
+	// 安定して6〜7秒になったため引き上げた（メモリも余裕を持たせて768mに）。
 	args := []string{
 		"run", "--rm", "--name", name,
 		"--network", "none",
-		"--memory", "512m", "--memory-swap", "512m",
-		"--cpus", "0.5",
+		"--memory", "768m", "--memory-swap", "768m",
+		"--cpus", "1.0",
 		"--pids-limit", "64",
 		"--security-opt", "no-new-privileges",
 		"--cap-drop", "ALL",

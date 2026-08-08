@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/syakesoba/codeforge/internal/auth"
 	"github.com/syakesoba/codeforge/internal/store"
@@ -21,7 +22,8 @@ type userResponse struct {
 }
 
 type progressResponse struct {
-	CompletedProblemIDs []string `json:"completedProblemIds"`
+	CompletedProblemIDs []string          `json:"completedProblemIds"`
+	PassedAt            map[string]string `json:"passedAt"`
 }
 
 // setSessionCookie はセッショントークンをHttpOnly Cookieとして設定します。
@@ -159,13 +161,20 @@ func progressHandler(svc *auth.Service, st *store.Store) http.HandlerFunc {
 			return
 		}
 
-		ids, err := st.CompletedProblemIDs(user.ID)
+		entries, err := st.CompletedProgress(user.ID)
 		if err != nil {
 			log.Printf("failed to list progress: %v", err)
 			writeError(w, http.StatusInternalServerError, "internal error")
 			return
 		}
 
-		writeJSON(w, http.StatusOK, progressResponse{CompletedProblemIDs: ids})
+		ids := make([]string, len(entries))
+		passedAt := make(map[string]string, len(entries))
+		for i, e := range entries {
+			ids[i] = e.ProblemID
+			passedAt[e.ProblemID] = e.PassedAt.Format(time.RFC3339)
+		}
+
+		writeJSON(w, http.StatusOK, progressResponse{CompletedProblemIDs: ids, PassedAt: passedAt})
 	}
 }

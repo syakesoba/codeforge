@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
+import ProgressBar from "@/components/ProgressBar";
+import { lessons } from "@/lib/lessons";
 
 export default function SiteHeader() {
-  const { user, loading, logOut } = useAuth();
+  const { user, loading, completed, streakDays, logOut } = useAuth();
   const router = useRouter();
 
   async function handleLogOut() {
@@ -14,10 +16,26 @@ export default function SiteHeader() {
   }
 
   return (
-    <header className="flex items-center justify-between border-b border-black/10 px-6 py-3 dark:border-white/10">
-      <Link href="/" className="font-bold">
+    <header className="flex items-center justify-between gap-4 border-b border-black/10 px-6 py-3 dark:border-white/10">
+      <Link href="/" className="shrink-0 font-bold">
         CodeForge
       </Link>
+
+      <div className="hidden max-w-xs flex-1 items-center gap-3 sm:flex">
+        <ProgressBar
+          completed={completed.size}
+          total={lessons.length}
+          className="flex-1"
+        />
+        {streakDays > 0 && (
+          <span
+            title={`${streakDays}日連続学習中`}
+            className="shrink-0 whitespace-nowrap text-xs font-semibold text-amber-600 dark:text-amber-400"
+          >
+            🔥 {streakDays}日
+          </span>
+        )}
+      </div>
 
       <div className="flex items-center gap-3 text-sm">
         {loading ? null : user ? (

@@ -1,4 +1,5 @@
 import LessonList from "@/components/LessonList";
+import StreakBadges from "@/components/StreakBadges";
 
 export default function Home() {
   return (
@@ -8,6 +9,7 @@ export default function Home() {
         コードを書いて実行しながらプログラミングを学べるサイトです。
       </p>
 
+      <StreakBadges />
       <LessonList />
     </div>
   );

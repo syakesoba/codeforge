@@ -1,0 +1,180 @@
+<title>CodeForge ドキュメント ― 詳細設計: フロントエンド構成</title>
+<style>
+  :root {
+    --bg: #f7f8f5;
+    --surface: #ffffff;
+    --surface-2: #eef2ec;
+    --ink: #14201a;
+    --ink-soft: #4b5b52;
+    --ink-faint: #8a988e;
+    --accent: #059669;
+    --accent-strong: #047857;
+    --accent-soft-bg: #d1fae5;
+    --line: #dde5da;
+    --amber: #b45309;
+    --amber-soft-bg: #fef3c7;
+    --code-bg: #14201a;
+    --code-ink: #e7ece7;
+    --shadow: 0 1px 2px rgba(20, 32, 26, 0.04), 0 8px 24px rgba(20, 32, 26, 0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1512; --surface: #16201b; --surface-2: #1c2721;
+      --ink: #e7ece7; --ink-soft: #a9b8ad; --ink-faint: #6b7a70;
+      --accent: #34d399; --accent-strong: #6ee7b7; --accent-soft-bg: #064e3b;
+      --line: #26332c; --amber: #fbbf24; --amber-soft-bg: #451a03;
+      --code-bg: #0b100d; --code-ink: #d7ded8;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1512; --surface: #16201b; --surface-2: #1c2721;
+    --ink: #e7ece7; --ink-soft: #a9b8ad; --ink-faint: #6b7a70;
+    --accent: #34d399; --accent-strong: #6ee7b7; --accent-soft-bg: #064e3b;
+    --line: #26332c; --amber: #fbbf24; --amber-soft-bg: #451a03;
+    --code-bg: #0b100d; --code-ink: #d7ded8;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+  :root[data-theme="light"] {
+    --bg: #f7f8f5; --surface: #ffffff; --surface-2: #eef2ec;
+    --ink: #14201a; --ink-soft: #4b5b52; --ink-faint: #8a988e;
+    --accent: #059669; --accent-strong: #047857; --accent-soft-bg: #d1fae5;
+    --line: #dde5da; --amber: #b45309; --amber-soft-bg: #fef3c7;
+    --code-bg: #14201a; --code-ink: #e7ece7;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+    line-height: 1.7;
+  }
+  header.top {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--surface); border-bottom: 1px solid var(--line); box-shadow: var(--shadow);
+  }
+  .top-inner {
+    max-width: 960px; margin: 0 auto; padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  }
+  .brand { font-weight: 800; font-size: 1.1rem; letter-spacing: -0.01em; }
+  .brand span { color: var(--accent-strong); }
+  nav.tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+  nav.tabs a {
+    text-decoration: none; color: var(--ink-soft); font-size: 0.9rem;
+    padding: 6px 12px; border-radius: 999px; border: 1px solid transparent;
+  }
+  nav.tabs a:hover { background: var(--surface-2); color: var(--ink); }
+  nav.tabs a.active { background: var(--accent-soft-bg); color: var(--accent-strong); font-weight: 700; }
+
+  nav.subnav { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 32px; }
+  nav.subnav a {
+    text-decoration: none; color: var(--ink-soft); font-size: 0.82rem;
+    padding: 5px 12px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line);
+  }
+  nav.subnav a:hover { color: var(--ink); }
+  nav.subnav a.active { background: var(--accent-soft-bg); color: var(--accent-strong); font-weight: 700; border-color: transparent; }
+
+  main { max-width: 960px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 2rem; margin: 0 0 8px; letter-spacing: -0.01em; }
+  h2 { font-size: 1.35rem; margin: 40px 0 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+  h2:first-of-type { border-top: none; padding-top: 0; }
+  p { color: var(--ink-soft); }
+  .lede { font-size: 1.1rem; color: var(--ink-soft); margin-bottom: 20px; }
+
+  code { background: var(--surface-2); padding: 2px 6px; border-radius: 6px; font-size: 0.88em; }
+
+  .callout {
+    border-radius: 12px; padding: 14px 18px; margin: 18px 0; font-size: 0.92rem;
+    background: var(--surface-2); border: 1px solid var(--line);
+  }
+  .callout.warn { background: var(--amber-soft-bg); border-color: transparent; }
+  .callout strong { display: block; margin-bottom: 4px; }
+
+  ul, ol { color: var(--ink-soft); }
+  li { margin-bottom: 4px; }
+
+  footer.page { max-width: 960px; margin: 0 auto; padding: 20px 24px 60px; color: var(--ink-faint); font-size: 0.85rem; }
+</style>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">Code<span>Forge</span> Docs</div>
+    <nav class="tabs">
+      <a href="index.html">概要</a>
+      <a href="requirements.html">要件定義</a>
+      <a href="plan.html">実装プラン</a>
+      <a href="design.html" class="active">詳細設計</a>
+      <a href="setup.html">起動方法</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <h1>フロントエンド構成</h1>
+  <p class="lede">Next.jsのページ・コンポーネント・libの一覧と役割。</p>
+
+  <nav class="subnav">
+    <a href="design.html">詳細設計トップ</a>
+    <a href="design-architecture.html">全体構成</a>
+    <a href="design-grading.html">採点フロー</a>
+    <a href="design-editor.html">エディタ・学習体験</a>
+    <a href="design-auth.html">認証・進捗</a>
+    <a href="design-api.html">API仕様</a>
+    <a href="design-frontend.html" class="active">フロントエンド構成</a>
+    <a href="design-security.html">セキュリティ</a>
+  </nav>
+
+  <h2>ページ・コンポーネント</h2>
+  <ul>
+    <li><strong>Next.js 16 (App Router, TypeScript, Tailwind CSS v4)</strong></li>
+    <li><code>app/page.tsx</code>: トップページ。全コース・全レッスンへのリンク一覧</li>
+    <li><code>app/login/page.tsx</code> / <code>app/signup/page.tsx</code>: 認証ページ（中身は共通の <code>AuthForm</code>）</li>
+    <li><code>app/lessons/[id]/page.tsx</code>: サーバーコンポーネント。ページ表示時にバックエンドの <code>GET /api/problems/{id}</code> を取得し、<code>LessonWorkspace</code> に渡す。ヘッダーに「← レッスン一覧に戻る」リンクとコース内の位置（例:「レッスン 3/6」）を表示</li>
+    <li><code>components/AuthProvider.tsx</code>: 認証状態・進捗・ストリークを管理するContext。
+      <ul>
+        <li>マウント時に <code>GET /api/me</code> でログイン状態を確認し、ログイン中なら <code>GET /api/progress</code> も取得する</li>
+        <li>合格済みレッスンの情報源を切り替える: <strong>ログイン中はサーバー、未ログインはlocalStorage</strong></li>
+        <li>合格日時（<code>passedAt</code>）も同様にサーバー/localStorageを切り替えて保持し、<code>lib/streak.ts</code>で連続学習日数を算出する</li>
+      </ul>
+    </li>
+    <li><code>components/LessonWorkspace.tsx</code>: クライアントコンポーネント。
+      <ul>
+        <li>左ペイン: <code>SlideViewer</code> で問題文をスライド形式に表示</li>
+        <li>右ペイン: <code>@uiw/react-codemirror</code> + <code>@codemirror/lang-go</code> によるGoシンタックスハイライト付きエディタ。<code>@codemirror/lint</code> によるリアルタイムエラー検知・importクイックフィックスも統合済み</li>
+        <li>レッスンを開くと保存済みの下書き（サーバー or localStorage）を復元し、入力停止1.2秒後に自動保存する</li>
+        <li>「実行して採点」ボタン押下で <code>POST .../submit</code> を呼び、pass/fail・所要時間・<strong>実行結果ログ</strong>（<code>fmt.Println</code>等の標準出力を含む、<code>go test</code>の生出力）を表示。合格時は進捗を記録して <code>SuccessModal</code> を表示</li>
+        <li>「フォーマット」ボタン押下で <code>POST .../format</code> を呼び、import整理・gofmt整形済みのコードでエディタを置き換える</li>
+        <li>「答えを見る」ボタン押下で <code>GET .../answer</code> を呼び、模範解答コードを表示（再度押すと隠す。一度取得した内容はキャッシュして再取得しない）</li>
+      </ul>
+    </li>
+    <li><code>components/SuccessModal.tsx</code>: 合格時のポップアップ。「次のレッスンへ進む →」で次のレッスンに遷移する（最終レッスンではコース制覇の表示になる）</li>
+    <li><code>components/LessonList.tsx</code>: コース別のレッスン一覧。合格済みレッスンの右側にチェックマーク、各コースカードに<code>ProgressBar</code>を表示する</li>
+    <li><code>components/ProgressBar.tsx</code>: 合格数/総数を受け取って描画する汎用の進捗バー。ヘッダー・コース一覧・レッスンページの3箇所で共用する</li>
+    <li><code>components/StreakBadges.tsx</code>: トップページに表示するストリーク日数とバッジの一覧。<code>lib/badges.ts</code>の<code>computeEarnedBadges</code>で導出する</li>
+    <li><code>components/SlideViewer.tsx</code>: クライアントコンポーネント。<code>lib/slides.ts</code> の <code>splitIntoSlides</code> で問題文Markdownを <code>##</code> / <code>###</code> 見出し単位のスライド配列に分割し、前へ/次へボタン・ドットインジケーターでページ送りする（Progateのスライド画面を意識したUI）</li>
+  </ul>
+
+  <h2>lib（ロジック・APIクライアント）</h2>
+  <ul>
+    <li><code>lib/slides.ts</code>: Markdownをスライドに分割するパーサー。フェンス付きコードブロック内の <code>#</code> 始まりの行は見出しとして扱わない</li>
+    <li><code>lib/lessons.ts</code>: コース・レッスンの定義と順序。「次のレッスン」の解決もここが担当する</li>
+    <li><code>lib/streak.ts</code>: 合格日時の配列から連続学習日数を計算する純粋関数</li>
+    <li><code>lib/badges.ts</code>: 合格済みレッスンとストリーク日数からバッジ一覧を導出する純粋関数</li>
+    <li><code>lib/draft.ts</code>: 未ログイン時のコード自動保存（localStorageのみ）</li>
+    <li><code>lib/progress.ts</code>: 未ログイン時の進捗（localStorage）。<code>{ [problemId]: 合格日時ISO }</code> の形式で保持する</li>
+    <li><code>lib/api.ts</code>: <code>NEXT_PUBLIC_API_BASE_URL</code>（デフォルト <code>http://localhost:8080</code>）を参照するAPIクライアント。認証が絡むリクエストには <code>credentials: "include"</code> を付ける</li>
+  </ul>
+
+  <div class="callout warn">
+    <strong>react-markdownは生HTMLを描画しない</strong>
+    <p style="margin:0">
+      問題文のMarkdown内に生の <code>&lt;div&gt;</code> タグ等を書いても、<code>rehype-raw</code> を追加しない限り <code>react-markdown</code> は描画しない（黙って消える）。
+      注意書きなどを強調したい場合はMarkdown標準の引用（<code>&gt; </code>）を使うこと。Lesson 4の「重要な注意点」もこの理由で引用ブロックに書き直している。
+    </p>
+  </div>
+</main>
+
+<footer class="page">
+  このドキュメントはCodeForgeの機能追加に合わせて更新されます。
+</footer>

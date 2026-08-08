@@ -71,6 +71,13 @@ func (s *Store) migrate() error {
 			passed_at  DATETIME NOT NULL,
 			PRIMARY KEY (user_id, problem_id)
 		)`,
+		`CREATE TABLE IF NOT EXISTS code_drafts (
+			user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			problem_id TEXT NOT NULL,
+			code       TEXT NOT NULL,
+			updated_at DATETIME NOT NULL,
+			PRIMARY KEY (user_id, problem_id)
+		)`,
 	}
 	for _, stmt := range stmts {
 		if _, err := s.db.Exec(stmt); err != nil {
@@ -182,24 +189,56 @@ func (s *Store) MarkProgress(userID int64, problemID string) error {
 	return nil
 }
 
-// CompletedProblemIDs はユーザーが合格済みの問題IDを返します。
-func (s *Store) CompletedProblemIDs(userID int64) ([]string, error) {
-	rows, err := s.db.Query(`SELECT problem_id FROM progress WHERE user_id = ?`, userID)
+// ProgressEntry は合格済み問題1件分の記録です。
+type ProgressEntry struct {
+	ProblemID string
+	PassedAt  time.Time
+}
+
+// CompletedProgress はユーザーが合格済みの問題を、合格日時付きで返します。
+func (s *Store) CompletedProgress(userID int64) ([]ProgressEntry, error) {
+	rows, err := s.db.Query(`SELECT problem_id, passed_at FROM progress WHERE user_id = ?`, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list progress: %w", err)
 	}
 	defer rows.Close()
 
-	ids := []string{}
+	entries := []ProgressEntry{}
 	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
+		var e ProgressEntry
+		if err := rows.Scan(&e.ProblemID, &e.PassedAt); err != nil {
 			return nil, fmt.Errorf("failed to scan progress: %w", err)
 		}
-		ids = append(ids, id)
+		entries = append(entries, e)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("failed to iterate progress: %w", err)
 	}
-	return ids, nil
+	return entries, nil
+}
+
+// SaveDraft はレッスンの編集中コードを保存します（自動保存用）。
+func (s *Store) SaveDraft(userID int64, problemID, code string) error {
+	_, err := s.db.Exec(`
+		INSERT INTO code_drafts (user_id, problem_id, code, updated_at) VALUES (?, ?, ?, ?)
+		ON CONFLICT (user_id, problem_id) DO UPDATE SET code = excluded.code, updated_at = excluded.updated_at
+	`, userID, problemID, code, time.Now().UTC())
+	if err != nil {
+		return fmt.Errorf("failed to save draft: %w", err)
+	}
+	return nil
+}
+
+// GetDraft は保存済みの編集中コードを返します。保存されていない場合は ok=false を返します。
+func (s *Store) GetDraft(userID int64, problemID string) (code string, ok bool, err error) {
+	err = s.db.QueryRow(
+		`SELECT code FROM code_drafts WHERE user_id = ? AND problem_id = ?`, userID, problemID,
+	).Scan(&code)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, fmt.Errorf("failed to get draft: %w", err)
+	}
+	return code, true, nil
 }

@@ -1,4 +1,4 @@
-<title>CodeForge ドキュメント ― 詳細設計</title>
+<title>CodeForge ドキュメント ― 詳細設計: 認証・進捗の保存</title>
 <style>
   :root {
     --bg: #f7f8f5;
@@ -83,17 +83,6 @@
   p { color: var(--ink-soft); }
   .lede { font-size: 1.1rem; color: var(--ink-soft); margin-bottom: 20px; }
 
-  .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin: 20px 0; }
-  .card {
-    background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
-    padding: 18px 20px; box-shadow: var(--shadow); text-decoration: none; color: var(--ink);
-    transition: transform 0.15s ease;
-  }
-  .card:hover { transform: translateY(-2px); }
-  .card .tag { font-size: 0.75rem; color: var(--accent-strong); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
-  .card h3 { margin: 6px 0 6px; }
-  .card p { margin: 0; font-size: 0.92rem; }
-
   table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.88rem; }
   th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
   th { color: var(--ink-faint); font-weight: 700; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; }
@@ -116,12 +105,6 @@
   ul, ol { color: var(--ink-soft); }
   li { margin-bottom: 4px; }
 
-  .diagram {
-    background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
-    padding: 20px; box-shadow: var(--shadow); font-size: 0.85rem; overflow-x: auto;
-  }
-  .diagram pre { background: none; color: var(--ink); padding: 0; margin: 0; }
-
   footer.page { max-width: 960px; margin: 0 auto; padding: 20px 24px 60px; color: var(--ink-faint); font-size: 0.85rem; }
 </style>
 
@@ -139,45 +122,45 @@
 </header>
 
 <main>
-  <h1>詳細設計</h1>
-  <p class="lede">サンドボックス実行の仕組み、API仕様、ディレクトリ構成、フロントエンドの構造をまとめる。長くなってきたためトピックごとにページを分けている。</p>
+  <h1>認証・進捗の保存</h1>
+  <p class="lede">Cookieベースのセッション認証と、学習進捗・自動保存データのテーブル設計。</p>
 
-  <div class="card-grid">
-    <a class="card" href="design-architecture.html">
-      <span class="tag">Architecture</span>
-      <h3>全体構成・ディレクトリ構成</h3>
-      <p>ブラウザ〜フロントエンド〜バックエンドの全体図と、リポジトリのディレクトリ構成。</p>
-    </a>
-    <a class="card" href="design-grading.html">
-      <span class="tag">Grading</span>
-      <h3>採点フロー・サンドボックス</h3>
-      <p>Dockerサンドボックスでの採点フロー、リソース制限の設定と調整の経緯、外部モジュール（Gin/GORM等）への対応。</p>
-    </a>
-    <a class="card" href="design-editor.html">
-      <span class="tag">Editor</span>
-      <h3>エディタ機能・学習体験</h3>
-      <p>エラー検知・import自動修正・コード自動保存・進捗バー・連続学習日数（ストリーク）とバッジ。</p>
-    </a>
-    <a class="card" href="design-auth.html">
-      <span class="tag">Auth</span>
-      <h3>認証・進捗の保存</h3>
-      <p>Cookieベースのセッション認証と、学習進捗・自動保存データのテーブル設計。</p>
-    </a>
-    <a class="card" href="design-api.html">
-      <span class="tag">API</span>
-      <h3>API仕様</h3>
-      <p>全エンドポイントのリクエスト/レスポンス形式一覧。</p>
-    </a>
-    <a class="card" href="design-frontend.html">
-      <span class="tag">Frontend</span>
-      <h3>フロントエンド構成</h3>
-      <p>Next.jsのページ・コンポーネント・libの一覧と役割。</p>
-    </a>
-    <a class="card" href="design-security.html">
-      <span class="tag">Security</span>
-      <h3>セキュリティ</h3>
-      <p>実装済みの対策と、本番運用に向けて未対応の項目。</p>
-    </a>
+  <nav class="subnav">
+    <a href="design.html">詳細設計トップ</a>
+    <a href="design-architecture.html">全体構成</a>
+    <a href="design-grading.html">採点フロー</a>
+    <a href="design-editor.html">エディタ・学習体験</a>
+    <a href="design-auth.html" class="active">認証・進捗</a>
+    <a href="design-api.html">API仕様</a>
+    <a href="design-frontend.html">フロントエンド構成</a>
+    <a href="design-security.html">セキュリティ</a>
+  </nav>
+
+  <h2>認証と進捗の保存</h2>
+  <p>
+    サイト自体のログインは<strong>ランダムトークンをHttpOnly Cookieで発行し、サーバー側の <code>sessions</code> テーブルと突き合わせる方式</strong>を採用している。
+    JWTはCourse「認証・JWT」の学習コンテンツとして扱うため、サイトの実装にはあえて使っていない（学習用の題材と本番実装を混同させないため）。
+  </p>
+  <table>
+    <tr><th>テーブル</th><th>カラム</th><th>用途</th></tr>
+    <tr><td><code>users</code></td><td>id, email, password_hash, created_at</td><td>登録ユーザー。パスワードはbcryptでハッシュ化</td></tr>
+    <tr><td><code>sessions</code></td><td>token, user_id, expires_at</td><td>ログインセッション（有効期間30日）</td></tr>
+    <tr><td><code>progress</code></td><td>user_id, problem_id, passed_at</td><td>合格したレッスン。(user_id, problem_id)が主キーで重複しない。<code>passed_at</code>はストリーク計算にも使う</td></tr>
+    <tr><td><code>code_drafts</code></td><td>user_id, problem_id, code, updated_at</td><td>エディタの自動保存（下書き）。(user_id, problem_id)が主キーで、保存のたびにUPSERTする</td></tr>
+  </table>
+  <ul>
+    <li>ログインは必須ではない。<strong>未ログインでも採点は利用でき</strong>、その場合の進捗はブラウザのlocalStorageにのみ保存される</li>
+    <li>ログイン中はサーバー側の進捗が正となり、フロントエンドは <code>GET /api/progress</code> の結果でチェックマークを表示する</li>
+    <li>「ユーザーが存在しない」と「パスワードが違う」を区別せず、どちらも同じエラーを返す（登録済みメールアドレスの推測を防ぐため）。存在しないユーザーの場合もダミーハッシュとの照合を行い、応答時間の差からの推測も防いでいる</li>
+  </ul>
+  <div class="callout warn">
+    <strong>ローカル開発時のCookie設定</strong>
+    <p style="margin:0">
+      フロントエンド(:3000)とバックエンド(:8080)はポートが異なるためクロスサイト扱いになる。
+      本来は <code>SameSite=None</code> が必要だが、これは <code>Secure</code>（HTTPS）必須でローカル開発のhttpではCookieが拒否される。
+      そのため開発時は <code>SameSite=Lax</code> を使い、環境変数 <code>SECURE_COOKIE=true</code> を設定したときだけ
+      <code>Secure</code> + <code>SameSite=None</code> に切り替わるようにしている。<strong>本番（HTTPS）では必ず設定すること。</strong>
+    </p>
   </div>
 </main>
 

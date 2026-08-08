@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@codemirror/lang-go": "^6.0.1",
+    "@codemirror/lint": "^6.9.7",
     "@uiw/react-codemirror": "^4.25.11",
     "next": "16.3.0",
     "react": "19.2.8",

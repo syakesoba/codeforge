@@ -7,8 +7,6 @@
 - `c.Abort()` / `c.AbortWithStatusJSON` でリクエストを中断する方法
 - `r.Use` と グループ単位のミドルウェア適用
 
-## 解説
-
 ### Ginのミドルウェア
 
 Course「Web APIの基礎」では、ミドルウェアを「`http.Handler` を受け取って `http.Handler` を返す関数」として書きました。Ginではもっとシンプルで、**ミドルウェアもハンドラと同じ `func(c *gin.Context)`** です。

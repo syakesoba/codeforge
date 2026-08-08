@@ -6,8 +6,6 @@
 - `binding` タグによる入力バリデーション
 - バリデーションエラーを 400 Bad Request として返す方法
 
-## 解説
-
 ### ShouldBindJSON
 
 Course「Web APIの基礎」では `json.NewDecoder(r.Body).Decode(&req)` でリクエストボディを読み取りました。Ginでは `c.ShouldBindJSON(&req)` の1行で同じことができます。
