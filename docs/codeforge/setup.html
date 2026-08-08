@@ -1,0 +1,276 @@
+<title>CodeForge ドキュメント ― 起動方法</title>
+<style>
+  :root {
+    --bg: #f7f8f5;
+    --surface: #ffffff;
+    --surface-2: #eef2ec;
+    --ink: #14201a;
+    --ink-soft: #4b5b52;
+    --ink-faint: #8a988e;
+    --accent: #059669;
+    --accent-strong: #047857;
+    --accent-soft-bg: #d1fae5;
+    --line: #dde5da;
+    --amber: #b45309;
+    --amber-soft-bg: #fef3c7;
+    --code-bg: #14201a;
+    --code-ink: #e7ece7;
+    --shadow: 0 1px 2px rgba(20, 32, 26, 0.04), 0 8px 24px rgba(20, 32, 26, 0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1512; --surface: #16201b; --surface-2: #1c2721;
+      --ink: #e7ece7; --ink-soft: #a9b8ad; --ink-faint: #6b7a70;
+      --accent: #34d399; --accent-strong: #6ee7b7; --accent-soft-bg: #064e3b;
+      --line: #26332c; --amber: #fbbf24; --amber-soft-bg: #451a03;
+      --code-bg: #0b100d; --code-ink: #d7ded8;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1512; --surface: #16201b; --surface-2: #1c2721;
+    --ink: #e7ece7; --ink-soft: #a9b8ad; --ink-faint: #6b7a70;
+    --accent: #34d399; --accent-strong: #6ee7b7; --accent-soft-bg: #064e3b;
+    --line: #26332c; --amber: #fbbf24; --amber-soft-bg: #451a03;
+    --code-bg: #0b100d; --code-ink: #d7ded8;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+  :root[data-theme="light"] {
+    --bg: #f7f8f5; --surface: #ffffff; --surface-2: #eef2ec;
+    --ink: #14201a; --ink-soft: #4b5b52; --ink-faint: #8a988e;
+    --accent: #059669; --accent-strong: #047857; --accent-soft-bg: #d1fae5;
+    --line: #dde5da; --amber: #b45309; --amber-soft-bg: #fef3c7;
+    --code-bg: #14201a; --code-ink: #e7ece7;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+    line-height: 1.7;
+  }
+  header.top {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--surface); border-bottom: 1px solid var(--line); box-shadow: var(--shadow);
+  }
+  .top-inner {
+    max-width: 920px; margin: 0 auto; padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  }
+  .brand { font-weight: 800; font-size: 1.1rem; letter-spacing: -0.01em; }
+  .brand span { color: var(--accent-strong); }
+  nav.tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+  nav.tabs a {
+    text-decoration: none; color: var(--ink-soft); font-size: 0.9rem;
+    padding: 6px 12px; border-radius: 999px; border: 1px solid transparent;
+  }
+  nav.tabs a:hover { background: var(--surface-2); color: var(--ink); }
+  nav.tabs a.active { background: var(--accent-soft-bg); color: var(--accent-strong); font-weight: 700; }
+
+  main { max-width: 920px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 2rem; margin: 0 0 8px; letter-spacing: -0.01em; }
+  h2 { font-size: 1.35rem; margin: 40px 0 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+  h2:first-of-type { border-top: none; padding-top: 0; }
+  h3 { font-size: 1.05rem; margin: 24px 0 8px; color: var(--ink); }
+  p { color: var(--ink-soft); }
+  .lede { font-size: 1.1rem; color: var(--ink-soft); margin-bottom: 28px; }
+
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--ink-faint); font-weight: 700; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; }
+
+  code { background: var(--surface-2); padding: 2px 6px; border-radius: 6px; font-size: 0.88em; }
+  pre {
+    background: var(--code-bg); color: var(--code-ink); padding: 16px 18px; border-radius: 12px;
+    overflow-x: auto; font-size: 0.85rem; line-height: 1.6;
+  }
+  pre code { background: none; padding: 0; color: inherit; }
+
+  .callout {
+    border-radius: 12px; padding: 14px 18px; margin: 18px 0; font-size: 0.92rem;
+    background: var(--surface-2); border: 1px solid var(--line);
+  }
+  .callout.note { background: var(--accent-soft-bg); border-color: transparent; }
+  .callout.warn { background: var(--amber-soft-bg); border-color: transparent; }
+  .callout strong { display: block; margin-bottom: 4px; }
+
+  ul, ol { color: var(--ink-soft); }
+  li { margin-bottom: 4px; }
+
+  .steps { list-style: none; margin: 0; padding: 0; counter-reset: step; }
+  .steps li {
+    counter-increment: step; position: relative; padding: 4px 0 4px 38px; margin-bottom: 14px;
+  }
+  .steps li::before {
+    content: counter(step); position: absolute; left: 0; top: 2px;
+    width: 26px; height: 26px; border-radius: 50%; background: var(--accent-soft-bg); color: var(--accent-strong);
+    font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; justify-content: center;
+  }
+
+  footer.page { max-width: 920px; margin: 0 auto; padding: 20px 24px 60px; color: var(--ink-faint); font-size: 0.85rem; }
+</style>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">Code<span>Forge</span> Docs</div>
+    <nav class="tabs">
+      <a href="index.html">概要</a>
+      <a href="requirements.html">要件定義</a>
+      <a href="plan.html">実装プラン</a>
+      <a href="design.html">詳細設計</a>
+      <a href="setup.html" class="active">起動方法</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <h1>起動方法</h1>
+  <p class="lede">ローカル環境でバックエンド・フロントエンドを立ち上げ、動作確認するまでの手順。</p>
+
+  <h2>前提ソフトウェア</h2>
+  <table>
+    <tr><th>ソフト</th><th>用途</th></tr>
+    <tr><td>Go</td><td>バックエンドAPIサーバーのビルド・実行</td></tr>
+    <tr><td>Docker Desktop（Linuxコンテナモード）</td><td>採点用サンドボックスの実行</td></tr>
+    <tr><td>Node.js / npm</td><td>Next.jsフロントエンドの実行</td></tr>
+  </table>
+
+  <h2>初回セットアップ</h2>
+  <ol class="steps">
+    <li>
+      採点用Dockerイメージをビルドする。標準ライブラリに加えてGin/GORM/SQLite/JWTのビルドキャッシュも焼き込むため、初回は数分かかる
+      <pre><code>docker build -t codeforge-judge:latest ./judge-image</code></pre>
+    </li>
+    <li>
+      フロントエンドの依存パッケージをインストールする
+      <pre><code>cd frontend
+npm install</code></pre>
+    </li>
+  </ol>
+
+  <h2>起動</h2>
+  <ol class="steps">
+    <li>
+      バックエンドを起動する（リポジトリルートで実行。<code>:8080</code>で待受）
+      <pre><code>go run ./cmd/server</code></pre>
+    </li>
+    <li>
+      フロントエンドを起動する（別ターミナルで。<code>:3000</code>で待受）
+      <pre><code>cd frontend
+npm run dev</code></pre>
+    </li>
+    <li>
+      ブラウザで <code>http://localhost:3000</code> を開く
+    </li>
+  </ol>
+
+  <h2>動作確認</h2>
+  <ol class="steps">
+    <li>トップページに5つのコース（全27レッスン）が表示されることを確認する</li>
+    <li>任意のレッスンを開き、左側にスライド形式の解説、右側にコードエディタが表示されることを確認する</li>
+    <li>「次へ →」でスライドを送れること、「答えを見る」で模範解答が表示されることを確認する</li>
+    <li>雛形コードの <code>TODO</code> 部分を実装し、「実行して採点」を押す</li>
+    <li>数秒待つと「✅ 合格！」または「❌ 不合格」と<code>go test</code>の出力が表示される。合格時は「おめでとうございます！」のポップアップから次のレッスンへ進める</li>
+    <li>レッスン一覧に戻ると、合格したレッスンの右側にチェックマークが付いている</li>
+  </ol>
+
+  <p>ログイン機能を確認する場合:</p>
+  <ol class="steps">
+    <li>ヘッダーの「新規登録」からメールアドレスとパスワード（8文字以上）で登録する</li>
+    <li>登録後、ヘッダーにメールアドレスと「ログアウト」が表示されることを確認する</li>
+    <li>レッスンに合格し、ログアウト → 再ログインしても進捗（チェックマーク）が残っていることを確認する</li>
+  </ol>
+  <p>
+    ログインは必須ではない。未ログインでも採点は利用でき、その場合の進捗はブラウザのlocalStorageに保存される
+    （そのブラウザでしか引き継がれない）。ログインすると進捗はサーバー側に保存される。
+  </p>
+
+  <p>バックエンド単体をAPIとして直接叩いて確認したい場合:</p>
+  <pre><code>curl http://localhost:8080/api/problems/web-api-basics-01
+
+curl -X POST http://localhost:8080/api/problems/web-api-basics-01/submit \
+  -H "Content-Type: application/json" \
+  -d '{"code": "package main\n\nimport (\n\t\"fmt\"\n\t\"net/http\"\n)\n\nfunc helloHandler(w http.ResponseWriter, r *http.Request) {\n\tfmt.Fprint(w, \"Hello, CodeForge!\")\n}\n\nfunc main() {\n\thttp.HandleFunc(\"/hello\", helloHandler)\n\thttp.ListenAndServe(\":8080\", nil)\n}\n"}'</code></pre>
+
+  <h2>停止方法</h2>
+
+  <div class="callout warn">
+    <strong>Windowsでは Ctrl+C だけでは止まらないことがある</strong>
+    <p style="margin:0">
+      <code>go run ./cmd/server</code> は「<code>go.exe</code>（親）→ 実際にビルドされた <code>server.exe</code>（子）」という2階層のプロセスになっており、
+      <code>npm run dev</code> は「<code>npm</code> → <code>next dev</code> → <code>start-server.js</code> → Turbopackのワーカープロセス」という4階層になっている。
+      Windowsのコンソールでは <code>Ctrl+C</code>（<code>CTRL_C_EVENT</code>）が必ずしもプロセスツリー全体に伝わらず、
+      ターミナル上のプロセスだけが終了して実体（<code>server.exe</code> やNext.jsのワーカー）がバックグラウンドに残ることがある。
+      止めたつもりでもポートが解放されていない場合は、下記の方法で確実に停止すること。
+    </p>
+  </div>
+
+  <p>まずは通常どおり、それぞれのターミナルで <code>Ctrl+C</code> を押す。そのあと必ずポートが解放されたか確認する。</p>
+  <pre><code>netstat -ano | findstr ":8080 :3000"</code></pre>
+  <p>まだ <code>LISTENING</code> が表示される場合は、プロセスツリーごと強制終了する。</p>
+  <table>
+    <tr><th>OS</th><th>ポートからプロセスIDを調べる</th><th>プロセスツリーを終了する</th></tr>
+    <tr>
+      <td>Windows</td>
+      <td><code>netstat -ano | findstr :8080</code>（フロントエンドは <code>:3000</code>）で一番右のPIDを確認</td>
+      <td><code>taskkill /F /T /PID &lt;調べたPID&gt;</code>（<strong><code>/T</code>を忘れないこと</strong>。子プロセスごと終了する）</td>
+    </tr>
+    <tr>
+      <td>macOS / Linux</td>
+      <td><code>lsof -i :8080</code>（フロントエンドは <code>:3000</code>）</td>
+      <td><code>kill &lt;調べたPID&gt;</code>（効かなければ <code>kill -9</code>）</td>
+    </tr>
+  </table>
+  <p>プロセスIDから親子関係を確認したい場合（Windows）:</p>
+  <pre><code>wmic process where "name='node.exe' or name='go.exe' or name='server.exe'" get ProcessId,ParentProcessId,Name,CommandLine</code></pre>
+  <p>最後に、念のためポートが解放されたことと、goとnode関連のプロセスが残っていないことを確認する。</p>
+  <pre><code>netstat -ano | findstr ":8080 :3000"
+tasklist | findstr /I "go.exe node.exe server.exe"</code></pre>
+
+  <p>採点用のDockerコンテナは <code>--rm</code> 付きで起動しており、採点が終わる（またはタイムアウトする）と自動的に削除されるため、通常は手動で止める必要はない。念のため残存していないか確認したい場合:</p>
+  <pre><code>docker ps -a --filter "name=judge-"</code></pre>
+  <p>もし残っていた場合（異常終了時など）は次のコマンドで削除できる。</p>
+  <pre><code>docker rm -f $(docker ps -aq --filter "name=judge-")</code></pre>
+
+  <h2>環境変数</h2>
+  <table>
+    <tr><th>変数</th><th>対象</th><th>デフォルト</th><th>用途</th></tr>
+    <tr><td><code>FRONTEND_ORIGIN</code></td><td>バックエンド</td><td><code>http://localhost:3000</code></td><td>CORSで許可するオリジン</td></tr>
+    <tr><td><code>SECURE_COOKIE</code></td><td>バックエンド</td><td><code>false</code></td><td><code>true</code>にするとセッションCookieが <code>Secure</code> + <code>SameSite=None</code> になる。<strong>本番（HTTPS）では必ず設定する</strong></td></tr>
+    <tr><td><code>NEXT_PUBLIC_API_BASE_URL</code></td><td>フロントエンド（<code>frontend/.env.local</code>）</td><td><code>http://localhost:8080</code></td><td>バックエンドAPIのベースURL</td></tr>
+  </table>
+
+  <h2>データの保存先</h2>
+  <p>
+    ユーザー・セッション・学習進捗は <code>data/codeforge.db</code>（SQLite）に保存される。
+    このファイルはバックエンドの初回起動時に自動生成され、<code>.gitignore</code> でバージョン管理から除外している。
+    データを初期化したい場合はサーバーを停止してからこのファイルを削除する。
+  </p>
+  <pre><code>rm -rf data/</code></pre>
+  <p>
+    なお、ログインしていない状態での学習進捗はブラウザのlocalStorageに保存される（キー: <code>codeforge:completed-lessons</code>）。
+    こちらはブラウザの開発者ツールから削除できる。
+  </p>
+
+  <h2>トラブルシューティング</h2>
+  <div class="callout warn">
+    <strong>Windows + Git Bash から手動でdocker runする場合</strong>
+    <p style="margin:0">
+      Git Bash（MSYS）は <code>/workspace</code> のようなUnix風パスを自動でWindowsパスに変換してしまい、
+      <code>docker run -v ... -w /workspace</code> が意図通りに渡らないことがある。
+      手動でデバッグする場合は <code>MSYS_NO_PATHCONV=1</code> を付けて実行する。
+      アプリ本体（Goの <code>exec.Command</code> 経由の呼び出し）はこの変換の影響を受けないため、通常運用では問題にならない。
+    </p>
+  </div>
+  <div class="callout warn">
+    <strong>採点が毎回タイムアウトする / 遅い</strong>
+    <p style="margin:0">
+      <code>codeforge-judge</code> イメージが標準ライブラリのビルドキャッシュを焼き込んだ最新版になっているか確認する（<code>docker build -t codeforge-judge:latest ./judge-image</code> を再実行）。
+      詳細は <a href="design.html">詳細設計</a> の「実装時に判明した注意点」を参照。
+    </p>
+  </div>
+</main>
+
+<footer class="page">
+  このドキュメントはCodeForgeの機能追加に合わせて更新されます。
+</footer>

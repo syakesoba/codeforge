@@ -1,0 +1,285 @@
+<title>CodeForge ドキュメント ― 実装プラン</title>
+<style>
+  :root {
+    --bg: #f7f8f5;
+    --surface: #ffffff;
+    --surface-2: #eef2ec;
+    --ink: #14201a;
+    --ink-soft: #4b5b52;
+    --ink-faint: #8a988e;
+    --accent: #059669;
+    --accent-strong: #047857;
+    --accent-soft-bg: #d1fae5;
+    --line: #dde5da;
+    --amber: #b45309;
+    --amber-soft-bg: #fef3c7;
+    --code-bg: #14201a;
+    --code-ink: #e7ece7;
+    --shadow: 0 1px 2px rgba(20, 32, 26, 0.04), 0 8px 24px rgba(20, 32, 26, 0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1512; --surface: #16201b; --surface-2: #1c2721;
+      --ink: #e7ece7; --ink-soft: #a9b8ad; --ink-faint: #6b7a70;
+      --accent: #34d399; --accent-strong: #6ee7b7; --accent-soft-bg: #064e3b;
+      --line: #26332c; --amber: #fbbf24; --amber-soft-bg: #451a03;
+      --code-bg: #0b100d; --code-ink: #d7ded8;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1512; --surface: #16201b; --surface-2: #1c2721;
+    --ink: #e7ece7; --ink-soft: #a9b8ad; --ink-faint: #6b7a70;
+    --accent: #34d399; --accent-strong: #6ee7b7; --accent-soft-bg: #064e3b;
+    --line: #26332c; --amber: #fbbf24; --amber-soft-bg: #451a03;
+    --code-bg: #0b100d; --code-ink: #d7ded8;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+  :root[data-theme="light"] {
+    --bg: #f7f8f5; --surface: #ffffff; --surface-2: #eef2ec;
+    --ink: #14201a; --ink-soft: #4b5b52; --ink-faint: #8a988e;
+    --accent: #059669; --accent-strong: #047857; --accent-soft-bg: #d1fae5;
+    --line: #dde5da; --amber: #b45309; --amber-soft-bg: #fef3c7;
+    --code-bg: #14201a; --code-ink: #e7ece7;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+    line-height: 1.7;
+  }
+  header.top {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--surface); border-bottom: 1px solid var(--line); box-shadow: var(--shadow);
+  }
+  .top-inner {
+    max-width: 920px; margin: 0 auto; padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  }
+  .brand { font-weight: 800; font-size: 1.1rem; letter-spacing: -0.01em; }
+  .brand span { color: var(--accent-strong); }
+  nav.tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+  nav.tabs a {
+    text-decoration: none; color: var(--ink-soft); font-size: 0.9rem;
+    padding: 6px 12px; border-radius: 999px; border: 1px solid transparent;
+  }
+  nav.tabs a:hover { background: var(--surface-2); color: var(--ink); }
+  nav.tabs a.active { background: var(--accent-soft-bg); color: var(--accent-strong); font-weight: 700; }
+
+  main { max-width: 920px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 2rem; margin: 0 0 8px; letter-spacing: -0.01em; }
+  h2 { font-size: 1.35rem; margin: 40px 0 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+  h2:first-of-type { border-top: none; padding-top: 0; }
+  h3 { font-size: 1.05rem; margin: 24px 0 8px; color: var(--ink); }
+  p { color: var(--ink-soft); }
+  .lede { font-size: 1.1rem; color: var(--ink-soft); margin-bottom: 28px; }
+
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--ink-faint); font-weight: 700; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; }
+
+  code { background: var(--surface-2); padding: 2px 6px; border-radius: 6px; font-size: 0.88em; }
+  pre {
+    background: var(--code-bg); color: var(--code-ink); padding: 16px 18px; border-radius: 12px;
+    overflow-x: auto; font-size: 0.85rem; line-height: 1.6;
+  }
+  pre code { background: none; padding: 0; color: inherit; }
+
+  .callout {
+    border-radius: 12px; padding: 14px 18px; margin: 18px 0; font-size: 0.92rem;
+    background: var(--surface-2); border: 1px solid var(--line);
+  }
+  .callout.note { background: var(--accent-soft-bg); border-color: transparent; }
+  .callout.warn { background: var(--amber-soft-bg); border-color: transparent; }
+  .callout strong { display: block; margin-bottom: 4px; }
+
+  .status-badge { display: inline-block; font-size: 0.75rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+  .status-done { background: var(--accent-soft-bg); color: var(--accent-strong); }
+  .status-next { background: var(--amber-soft-bg); color: var(--amber); }
+  .status-todo { background: var(--surface-2); color: var(--ink-faint); }
+
+  ul, ol { color: var(--ink-soft); }
+  li { margin-bottom: 4px; }
+
+  .timeline { list-style: none; margin: 0; padding: 0; }
+  .timeline li {
+    display: flex; gap: 14px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--line);
+  }
+  .timeline li:last-child { border-bottom: none; }
+
+  footer.page { max-width: 920px; margin: 0 auto; padding: 20px 24px 60px; color: var(--ink-faint); font-size: 0.85rem; }
+</style>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">Code<span>Forge</span> Docs</div>
+    <nav class="tabs">
+      <a href="index.html">概要</a>
+      <a href="requirements.html">要件定義</a>
+      <a href="plan.html" class="active">実装プラン</a>
+      <a href="design.html">詳細設計</a>
+      <a href="setup.html">起動方法</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <h1>実装プラン</h1>
+  <p class="lede">コアの技術リスク（サンドボックス実行＋自動採点）をLesson 1本で検証してから、動く土台の上に残りのレッスンを量産する方針で進めた。現在は全5コース27レッスンとユーザー認証まで実装済み。</p>
+
+  <h2>進行状況</h2>
+  <ul class="timeline">
+    <li><span class="status-badge status-done">完了</span> サンドボックス実行 + <code>go test</code> 自動採点のPoC（バックエンドAPI）</li>
+    <li><span class="status-badge status-done">完了</span> Next.jsフロントエンドからAPIを呼び出し、レッスンが一気通貫で動作</li>
+    <li><span class="status-badge status-done">完了</span> スライド形式の解説UI・答えを見る機能・合格ポップアップ・進捗チェックマーク</li>
+    <li><span class="status-badge status-done">完了</span> 外部依存（Gin/GORM/SQLite/JWT）を使うレッスン向けの判定イメージ拡張</li>
+    <li><span class="status-badge status-done">完了</span> 全5コース27レッスンのコンテンツ</li>
+    <li><span class="status-badge status-done">完了</span> ユーザー認証（Cookieセッション）と進捗のサーバー保存</li>
+    <li><span class="status-badge status-next">次</span> デザインのブラッシュアップ（キャラクター・バッジ等のゲーミフィケーション）、本番デプロイ</li>
+  </ul>
+
+  <h2>コース構成（Go応用編）</h2>
+  <p>並行処理はGo固有の機能として先に基礎を学び、その後Web開発の実践に進む構成にしている。</p>
+  <table>
+    <tr><th>#</th><th>Course</th><th>内容イメージ</th><th>状態</th></tr>
+    <tr>
+      <td>1</td><td>ゴルーチン・並行処理</td>
+      <td>goroutine/channel、<code>sync.WaitGroup</code>、<code>sync.Mutex</code>、<code>select</code>、<code>context</code>によるタイムアウト制御</td>
+      <td><span class="status-badge status-done">全6レッスン</span></td>
+    </tr>
+    <tr>
+      <td>2</td><td>Web APIの基礎</td>
+      <td><code>net/http</code>でのルーティング・ハンドラ・JSONリクエスト/レスポンス</td>
+      <td><span class="status-badge status-done">全6レッスン</span></td>
+    </tr>
+    <tr>
+      <td>3</td><td>フレームワークで作るAPI</td>
+      <td>Gin。ルーティンググループ、ミドルウェア、バリデーション</td>
+      <td><span class="status-badge status-done">全5レッスン</span></td>
+    </tr>
+    <tr>
+      <td>4</td><td>データベース連携</td>
+      <td><code>database/sql</code>基礎 → GORMでのCRUD（SQLiteインメモリ）</td>
+      <td><span class="status-badge status-done">全5レッスン</span></td>
+    </tr>
+    <tr>
+      <td>5</td><td>認証・JWT</td>
+      <td>bcryptによるパスワードハッシュ化、JWT発行/検証、認証ミドルウェアでのAPI保護</td>
+      <td><span class="status-badge status-done">全5レッスン</span></td>
+    </tr>
+  </table>
+
+  <p>
+    当初は6コース目として「総合演習」を置く構想だったが、各コースの最終レッスンを
+    「道場」（そのコースの内容を統合するまとめ問題）とする形に変えたため、独立したコースとしては設けていない。
+  </p>
+
+  <h2>各コースのレッスン一覧</h2>
+
+  <h3>Course 1: ゴルーチン・並行処理</h3>
+  <table>
+    <tr><th>#</th><th>レッスン</th><th>演習（採点対象）</th></tr>
+    <tr><td>1</td><td>ゴルーチンとWaitGroup</td><td>複数ゴルーチンで各要素を2乗する</td></tr>
+    <tr><td>2</td><td>channelでやり取りする</td><td>channel経由で計算結果を集める</td></tr>
+    <tr><td>3</td><td>sync.Mutexで排他制御する</td><td>共有mapへの同時書き込みをMutexで保護する</td></tr>
+    <tr><td>4</td><td>selectで複数のチャネルを扱う</td><td>先に値が届いたチャネルを採用する</td></tr>
+    <tr><td>5</td><td>contextでタイムアウト制御する</td><td><code>context.WithTimeout</code>を使う関数を実装</td></tr>
+    <tr><td>6（道場）</td><td>ワーカープールを作ろう</td><td>jobs/resultsチャネルとワーカーゴルーチンを実装</td></tr>
+  </table>
+
+  <h3>Course 3: フレームワークで作るAPI（Gin）</h3>
+  <table>
+    <tr><th>#</th><th>レッスン</th><th>演習（採点対象）</th></tr>
+    <tr><td>1</td><td>Ginの基本</td><td><code>c.JSON</code>でJSONを返すハンドラを実装</td></tr>
+    <tr><td>2</td><td>ルーティンググループとパスパラメータ</td><td><code>c.Param</code>で受け取った値を返す</td></tr>
+    <tr><td>3</td><td>バインディングとバリデーション</td><td><code>binding</code>タグ + <code>ShouldBindJSON</code></td></tr>
+    <tr><td>4</td><td>Ginのミドルウェア</td><td>APIキーを検証するミドルウェアを実装</td></tr>
+    <tr><td>5（道場）</td><td>GinでCRUD APIを作ろう</td><td>書籍管理APIの4エンドポイントを実装</td></tr>
+  </table>
+
+  <h3>Course 4: データベース連携</h3>
+  <table>
+    <tr><th>#</th><th>レッスン</th><th>演習（採点対象）</th></tr>
+    <tr><td>1</td><td>DBに接続してテーブルを作る</td><td><code>sql.Open</code> + <code>CREATE TABLE</code></td></tr>
+    <tr><td>2</td><td>データを登録・取得する</td><td><code>LastInsertId</code>、<code>Query</code>+<code>rows.Next</code></td></tr>
+    <tr><td>3</td><td>データを更新・削除する</td><td><code>RowsAffected</code>で存在チェックする</td></tr>
+    <tr><td>4</td><td>GORMの基本</td><td><code>AutoMigrate</code>、<code>Create</code>、<code>Find</code></td></tr>
+    <tr><td>5（道場）</td><td>GORMでCRUDを完成させよう</td><td>取得・更新・削除とエラーハンドリング</td></tr>
+  </table>
+
+  <h3>Course 5: 認証・JWT</h3>
+  <table>
+    <tr><th>#</th><th>レッスン</th><th>演習（採点対象）</th></tr>
+    <tr><td>1</td><td>パスワードをハッシュ化する</td><td>bcryptでのハッシュ化・照合</td></tr>
+    <tr><td>2</td><td>JWTを発行する</td><td><code>sub</code>/<code>exp</code>クレーム付きのHS256トークン</td></tr>
+    <tr><td>3</td><td>JWTを検証する</td><td><code>jwt.Parse</code>＋署名アルゴリズムの確認</td></tr>
+    <tr><td>4</td><td>認証ミドルウェアでAPIを保護する</td><td>Bearerトークンを検証するミドルウェア</td></tr>
+    <tr><td>5（道場）</td><td>ログインAPIを作ろう</td><td>register/login/profile の3エンドポイント</td></tr>
+  </table>
+
+  <h2>Course「Web APIの基礎」レッスン詳細</h2>
+  <table>
+    <tr><th>#</th><th>レッスン</th><th>スライド内容</th><th>演習（採点対象）</th><th>状態</th></tr>
+    <tr>
+      <td>1</td><td>HTTPサーバーを立てる</td>
+      <td><code>http.HandleFunc</code> / <code>http.ListenAndServe</code></td>
+      <td>指定パスに固定文字列を返すハンドラを実装</td>
+      <td><span class="status-badge status-done">実装済み</span></td>
+    </tr>
+    <tr>
+      <td>2</td><td>ルーティングとパスパラメータ</td>
+      <td><code>http.ServeMux</code>、パスパラメータの扱い</td>
+      <td>複数エンドポイントを持つルーターを実装</td>
+      <td><span class="status-badge status-done">実装済み</span></td>
+    </tr>
+    <tr>
+      <td>3</td><td>リクエストを読み取る</td>
+      <td>クエリパラメータ、リクエストボディのJSONデコード</td>
+      <td>リクエストボディを受け取り値を加工して返す</td>
+      <td><span class="status-badge status-done">実装済み</span></td>
+    </tr>
+    <tr>
+      <td>4</td><td>レスポンスを返す</td>
+      <td>JSONエンコード、ステータスコード、ヘッダー設定</td>
+      <td>ステータスコード・JSON構造を指定通りに返す</td>
+      <td><span class="status-badge status-done">実装済み</span></td>
+    </tr>
+    <tr>
+      <td>5</td><td>共通処理をまとめる</td>
+      <td>ミドルウェア的な関数のラップ（ロギング等）</td>
+      <td>ハンドラをラップする関数を実装</td>
+      <td><span class="status-badge status-done">実装済み</span></td>
+    </tr>
+    <tr>
+      <td>6（道場）</td><td>総合問題</td>
+      <td>―</td>
+      <td>メモリ上のTODO CRUD API（GET/POST/PUT/DELETE）を実装</td>
+      <td><span class="status-badge status-done">実装済み</span></td>
+    </tr>
+  </table>
+
+  <div class="callout note">
+    <strong>実装時に判明した重要な注意点</strong>
+    <p style="margin:0">
+      採点用ワークスペースの <code>go.mod</code> が <code>go 1.21</code> 指定になっていたため、Go 1.22で追加された
+      <code>http.ServeMux</code> の新ルーティング機能（<code>"GET /path/{id}"</code> のようなメソッド指定パターンやパスパラメータ）が
+      無効化され、Lesson 2・6のような <code>newMux()</code> を使う問題がすべて404になってしまう不具合があった。
+      各レッスンの模範解答をローカルで <code>go test</code> 実行して検証する過程で発覚し、<code>internal/judge/judge.go</code> の
+      <code>submissionGoMod</code> を <code>go 1.22</code> に修正して解消した。詳細は <a href="design.html">詳細設計</a> を参照。
+    </p>
+  </div>
+
+  <h2>今後の進め方（案）</h2>
+  <p>要件定義に挙げた機能は一通り実装済み。ここから先は、サービスとして公開するための作り込みが中心になる。</p>
+  <ol>
+    <li>デザインのブラッシュアップ。要件で掲げた「Progateに近いポップな雰囲気（キャラクター・バッジ等のゲーミフィケーション）」は未着手で、現状は機能優先の素朴なUIになっている</li>
+    <li>本番デプロイ。クラウド上でのサンドボックス実行基盤（Docker Engine直叩き / gVisor / Firecracker等のセキュリティレベル選定）、HTTPS化と <code>SECURE_COOKIE=true</code> の適用、アプリDBのSQLiteからPostgreSQL等への移行検討</li>
+    <li>レッスンの拡充。Go以外の言語コースを追加する場合は、判定イメージを言語ごとに用意する仕組みへの一般化が必要</li>
+    <li>運用面の整備（パスワードリセット、レート制限、採点キューによる同時実行数の制御など）</li>
+  </ol>
+</main>
+
+<footer class="page">
+  このドキュメントはCodeForgeの機能追加に合わせて更新されます。
+</footer>

@@ -1,0 +1,426 @@
+<title>CodeForge ドキュメント ― 詳細設計</title>
+<style>
+  :root {
+    --bg: #f7f8f5;
+    --surface: #ffffff;
+    --surface-2: #eef2ec;
+    --ink: #14201a;
+    --ink-soft: #4b5b52;
+    --ink-faint: #8a988e;
+    --accent: #059669;
+    --accent-strong: #047857;
+    --accent-soft-bg: #d1fae5;
+    --line: #dde5da;
+    --amber: #b45309;
+    --amber-soft-bg: #fef3c7;
+    --code-bg: #14201a;
+    --code-ink: #e7ece7;
+    --shadow: 0 1px 2px rgba(20, 32, 26, 0.04), 0 8px 24px rgba(20, 32, 26, 0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1512; --surface: #16201b; --surface-2: #1c2721;
+      --ink: #e7ece7; --ink-soft: #a9b8ad; --ink-faint: #6b7a70;
+      --accent: #34d399; --accent-strong: #6ee7b7; --accent-soft-bg: #064e3b;
+      --line: #26332c; --amber: #fbbf24; --amber-soft-bg: #451a03;
+      --code-bg: #0b100d; --code-ink: #d7ded8;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1512; --surface: #16201b; --surface-2: #1c2721;
+    --ink: #e7ece7; --ink-soft: #a9b8ad; --ink-faint: #6b7a70;
+    --accent: #34d399; --accent-strong: #6ee7b7; --accent-soft-bg: #064e3b;
+    --line: #26332c; --amber: #fbbf24; --amber-soft-bg: #451a03;
+    --code-bg: #0b100d; --code-ink: #d7ded8;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+  :root[data-theme="light"] {
+    --bg: #f7f8f5; --surface: #ffffff; --surface-2: #eef2ec;
+    --ink: #14201a; --ink-soft: #4b5b52; --ink-faint: #8a988e;
+    --accent: #059669; --accent-strong: #047857; --accent-soft-bg: #d1fae5;
+    --line: #dde5da; --amber: #b45309; --amber-soft-bg: #fef3c7;
+    --code-bg: #14201a; --code-ink: #e7ece7;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+    line-height: 1.7;
+  }
+  header.top {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--surface); border-bottom: 1px solid var(--line); box-shadow: var(--shadow);
+  }
+  .top-inner {
+    max-width: 960px; margin: 0 auto; padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  }
+  .brand { font-weight: 800; font-size: 1.1rem; letter-spacing: -0.01em; }
+  .brand span { color: var(--accent-strong); }
+  nav.tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+  nav.tabs a {
+    text-decoration: none; color: var(--ink-soft); font-size: 0.9rem;
+    padding: 6px 12px; border-radius: 999px; border: 1px solid transparent;
+  }
+  nav.tabs a:hover { background: var(--surface-2); color: var(--ink); }
+  nav.tabs a.active { background: var(--accent-soft-bg); color: var(--accent-strong); font-weight: 700; }
+
+  main { max-width: 960px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 2rem; margin: 0 0 8px; letter-spacing: -0.01em; }
+  h2 { font-size: 1.35rem; margin: 40px 0 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+  h2:first-of-type { border-top: none; padding-top: 0; }
+  h3 { font-size: 1.05rem; margin: 24px 0 8px; color: var(--ink); }
+  p { color: var(--ink-soft); }
+  .lede { font-size: 1.1rem; color: var(--ink-soft); margin-bottom: 28px; }
+
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.88rem; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--ink-faint); font-weight: 700; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; }
+
+  code { background: var(--surface-2); padding: 2px 6px; border-radius: 6px; font-size: 0.88em; }
+  pre {
+    background: var(--code-bg); color: var(--code-ink); padding: 16px 18px; border-radius: 12px;
+    overflow-x: auto; font-size: 0.83rem; line-height: 1.6;
+  }
+  pre code { background: none; padding: 0; color: inherit; }
+
+  .callout {
+    border-radius: 12px; padding: 14px 18px; margin: 18px 0; font-size: 0.92rem;
+    background: var(--surface-2); border: 1px solid var(--line);
+  }
+  .callout.note { background: var(--accent-soft-bg); border-color: transparent; }
+  .callout.warn { background: var(--amber-soft-bg); border-color: transparent; }
+  .callout strong { display: block; margin-bottom: 4px; }
+
+  ul, ol { color: var(--ink-soft); }
+  li { margin-bottom: 4px; }
+
+  .diagram {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+    padding: 20px; box-shadow: var(--shadow); font-size: 0.85rem; overflow-x: auto;
+  }
+  .diagram pre { background: none; color: var(--ink); padding: 0; margin: 0; }
+
+  footer.page { max-width: 960px; margin: 0 auto; padding: 20px 24px 60px; color: var(--ink-faint); font-size: 0.85rem; }
+</style>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">Code<span>Forge</span> Docs</div>
+    <nav class="tabs">
+      <a href="index.html">概要</a>
+      <a href="requirements.html">要件定義</a>
+      <a href="plan.html">実装プラン</a>
+      <a href="design.html" class="active">詳細設計</a>
+      <a href="setup.html">起動方法</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <h1>詳細設計</h1>
+  <p class="lede">サンドボックス実行の仕組み、API仕様、ディレクトリ構成、フロントエンドの構造をまとめる。</p>
+
+  <h2>全体構成</h2>
+  <div class="diagram">
+<pre>
+[ブラウザ]
+   │  GET /lessons/[id]  (SSRでバックエンドから問題データ取得)
+   │  POST 採点リクエスト (クライアントから直接、CORS経由・Cookie付き)
+   ▼
+[Next.js frontend :3000]
+   │  fetch (NEXT_PUBLIC_API_BASE_URL, credentials: include)
+   ▼
+[Go backend :8080]  cmd/server/main.go
+   │  GET  /api/problems/{id}          問題文・雛形コードを返す
+   │  GET  /api/problems/{id}/answer   模範解答を返す
+   │  POST /api/problems/{id}/submit   ユーザーコードを採点する
+   │  POST /api/auth/signup|login|logout
+   │  GET  /api/me, /api/progress      認証状態・学習進捗
+   ├────────────────────────┐
+   ▼                                    ▼
+[internal/judge]                   [internal/auth] → [internal/store]
+   │  一時ワークスペース作成            セッション検証     SQLite
+   │  → docker run → 結果パース         合格時に進捗を記録  (data/codeforge.db)
+   ▼
+[Docker: codeforge-judge イメージ]
+   go test -vet=off -json ./...  を実行し、結果を標準出力(JSON)で返す
+</pre>
+  </div>
+
+  <h2>ディレクトリ構成</h2>
+  <pre><code>go_study/                          (リポジトリルート, module github.com/syakesoba/codeforge)
+  go.mod
+  cmd/server/
+    main.go                        HTTPサーバーのエントリポイント・問題/採点エンドポイント
+    authhandlers.go                サインアップ/ログイン/ログアウト/me/progress
+  internal/judge/
+    judge.go                       サンドボックス実行のオーケストレーション
+    docker.go                      docker run 呼び出し（exec.CommandContext）
+    result.go                      `go test -json` 出力の整形（表示用）
+  internal/problems/
+    problems.go                    problemID -> ディレクトリ の許可リスト・ロード処理
+  internal/auth/
+    auth.go                        サインアップ・ログイン・セッション管理（bcrypt）
+  internal/store/
+    store.go                       SQLite（users / sessions / progress）
+  problems/
+    concurrency/                   Course 1: ゴルーチン・並行処理（6レッスン）
+    web-api-basics/                Course 2: Web APIの基礎（6レッスン）
+    gin-api/                       Course 3: フレームワークで作るAPI（5レッスン）
+    database/                      Course 4: データベース連携（5レッスン）
+    auth-jwt/                      Course 5: 認証・JWT（5レッスン）
+      05-capstone-login-api/       ← 各レッスンは以下の5ファイルで構成
+        problem.md                 スライドの元になる説明文（Markdown）
+        starter.go                 ユーザーに見せる雛形コード
+        answer.go                  模範解答（`//go:build ignore`でビルド対象外）
+        solution_test.go           非公開の採点用テスト（クライアントには渡さない）
+        go.mod / go.sum            採点ワークスペースに配置する依存定義
+  judge-image/
+    Dockerfile                     採点用サンドボックスイメージ
+    priming/                       Gin/GORM/SQLite/JWTのキャッシュを焼き込むための捨てモジュール
+  data/codeforge.db                アプリのSQLite（.gitignore対象。初回起動時に自動生成）
+  frontend/                        Next.js（App Router, TypeScript, Tailwind CSS v4）
+    src/app/page.tsx               トップページ（コース・レッスン一覧）
+    src/app/login|signup/page.tsx  ログイン・新規登録ページ
+    src/app/lessons/[id]/page.tsx  レッスンページ（サーバーコンポーネント）
+    src/components/
+      AuthProvider.tsx             認証状態と進捗のContext
+      SiteHeader.tsx               ヘッダー（ログイン状態の表示）
+      AuthForm.tsx                 ログイン/新規登録フォーム
+      LessonList.tsx               コース別レッスン一覧（合格チェックマーク）
+      LessonWorkspace.tsx          スライド・エディタ・採点結果
+      SlideViewer.tsx              Markdownをスライドに分割して表示
+      SuccessModal.tsx             合格時のポップアップ
+    src/lib/
+      api.ts                       バックエンドAPIクライアント
+      lessons.ts                   コース・レッスンの一覧と順序
+      slides.ts                    Markdown → スライド分割
+      progress.ts                  未ログイン時の進捗（localStorage）
+  docs/
+    requirements.md                初期要件メモ
+    codeforge/                     このドキュメント一式
+</code></pre>
+
+  <h2>採点フローの詳細</h2>
+  <ol>
+    <li><code>POST /api/problems/{id}/submit</code> を受信し、<code>internal/problems</code> の許可リストで <code>problemID</code> を検証（パストラバーサル対策。未登録IDは404）</li>
+    <li><code>os.MkdirTemp</code> で一時ワークスペースを作成し、以下を配置
+      <ul>
+        <li><code>go.mod</code> / <code>go.sum</code>（<strong>レッスンごとのファイルをそのままコピー</strong>。標準ライブラリのみのレッスンは <code>module submission</code> / <code>go 1.22</code> だけの最小構成、Gin等を使うレッスンは <code>go mod tidy</code> で生成した内容）</li>
+        <li><code>solution.go</code>（ユーザーコード）</li>
+        <li><code>solution_test.go</code>（問題ディレクトリからコピーした非公開テスト）</li>
+      </ul>
+    </li>
+    <li><code>docker run</code> をコンテナ名指定で起動し、<code>go test -vet=off -json ./...</code> を実行</li>
+    <li><code>context.WithTimeout</code>（30秒）超過時は <code>docker rm -f</code> で強制的にコンテナを削除</li>
+    <li><strong>合否は <code>go test</code> プロセスの終了コードで判定</strong>する。<code>go test -json</code> の出力は表示用ログの整形にのみ使う</li>
+    <li>ログイン中（有効なセッションCookieがある）かつ合格なら、<code>progress</code> テーブルに記録する</li>
+    <li><code>defer os.RemoveAll</code> でワークスペースを削除</li>
+  </ol>
+
+  <div class="callout warn">
+    <strong>合否判定に終了コードを使う理由</strong>
+    <p style="margin:0">
+      当初は <code>go test -json</code> のイベントに <code>"Action":"fail"</code> があるかどうかで判定していたが、
+      ゴルーチンからの保護されていないmap書き込み（<code>fatal error: concurrent map writes</code>）のように
+      <strong>failイベントが出力される前にプロセスごと異常終了するケース</strong>を取りこぼす可能性があった。
+      <code>go test</code> は「全テストがpassしたときだけ終了コード0」という契約を守るため、判定はこちらを正としている。
+      Course「ゴルーチン・並行処理」Lesson 3はまさにこのケースを検出する問題になっている。
+    </p>
+  </div>
+
+  <h3>Dockerサンドボックスの実行設定</h3>
+  <table>
+    <tr><th>設定</th><th>値</th><th>目的</th></tr>
+    <tr><td><code>--network</code></td><td><code>none</code></td><td>外部通信を完全に遮断。Gin等の外部モジュールはイメージビルド時に焼き込み済みのため、オフラインでも解決できる</td></tr>
+    <tr><td><code>--memory</code> / <code>--memory-swap</code></td><td><code>512m</code></td><td>メモリ枯渇の防止</td></tr>
+    <tr><td><code>--cpus</code></td><td><code>0.5</code></td><td>CPU占有の防止</td></tr>
+    <tr><td><code>--pids-limit</code></td><td><code>64</code></td><td>フォーク爆弾対策</td></tr>
+    <tr><td><code>--cap-drop ALL</code> / <code>--security-opt no-new-privileges</code></td><td>―</td><td>不要な権限の削除</td></tr>
+    <tr><td>非rootユーザー（イメージ内で <code>USER judge</code>）</td><td>uid 1000</td><td>コンテナ内権限の最小化</td></tr>
+    <tr><td><code>--rm</code> + コンテナ名指定</td><td>―</td><td>実行のたびに使い捨て。タイムアウト時は名前を使って強制削除</td></tr>
+  </table>
+
+  <div class="callout warn">
+    <strong>実装時に判明した注意点</strong>
+    <p style="margin:0 0 8px">
+      当初は <code>--read-only</code> + <code>--tmpfs /tmp</code> でファイルシステムを完全に固定する設計だったが、
+      これだと <code>GOCACHE</code> も毎回リセットされ、<code>net/http</code> が依存する標準ライブラリを
+      コンテナ起動のたびにフルコンパイルすることになり、<code>--memory 256m</code> ではOOM Killが発生した。
+    </p>
+    <p style="margin:0 0 8px">
+      対処として、<strong>Dockerイメージのビルド時に <code>go build std</code> を実行して標準ライブラリのビルドキャッシュをイメージ自体に焼き込む</strong>方式に変更（<code>judge-image/Dockerfile</code>）。
+      あわせて <code>--read-only</code>/<code>--tmpfs</code> は外し、コンテナは <code>--rm</code> で毎回破棄される使い捨てである点を踏まえて許容し、メモリ上限は512mに緩和した。
+    </p>
+    <p style="margin:0">
+      さらに <code>go test</code> はデフォルトで軽量な <code>vet</code> 解析を毎回走らせるが、これはイメージに焼き込んだキャッシュの対象外（コンテナの書き込み層はrmで消える）のため、実行のたびに数秒のロスが発生していた。
+      採点用途では静的解析は不要なため <code>-vet=off</code> を付けて解消した。これにより1リクエストあたり約1.5〜2秒まで短縮している。
+    </p>
+  </div>
+
+  <h3>外部モジュールを使うレッスンへの対応</h3>
+  <p>
+    Gin・GORM・SQLite・JWT・bcryptを使うコースでは、<code>--network none</code> のオフライン環境でも依存を解決できる必要がある。
+    そこで <code>judge-image/priming/</code> にこれらを import するだけの捨てモジュールを置き、イメージビルド時に
+    <code>go mod tidy &amp;&amp; go build ./... &amp;&amp; go test -vet=off ./...</code> を実行して
+    モジュールキャッシュとビルドキャッシュをイメージに焼き込んでいる。各レッスンの <code>go.mod</code>/<code>go.sum</code> は、
+    このpriming時に解決されたものと同じバージョンを指す。実行時は <code>GOPROXY=off</code> を設定し、
+    万一バージョンが食い違っても外部への取得を試みず即座に失敗するようにしている。
+  </p>
+
+  <div class="callout warn">
+    <strong>go build だけでなく go test まで走らせる理由</strong>
+    <p style="margin:0">
+      当初はpriming時に <code>go build</code> だけ実行していたが、採点で実際に走るのは <code>go test</code> であり、
+      <code>testing</code> / <code>httptest</code> を含むテストバイナリのビルド経路はキャッシュ対象外だった。
+      そのためGinを使うレッスンの<strong>初回提出だけ</strong>フルコンパイルが走り、15秒のタイムアウトに達していた。
+      priming時に実際のテストを1本走らせるようにして、初回5.9秒・以降2〜3秒に改善している。
+    </p>
+  </div>
+
+  <h2>認証と進捗の保存</h2>
+  <p>
+    サイト自体のログインは<strong>ランダムトークンをHttpOnly Cookieで発行し、サーバー側の <code>sessions</code> テーブルと突き合わせる方式</strong>を採用している。
+    JWTはCourse「認証・JWT」の学習コンテンツとして扱うため、サイトの実装にはあえて使っていない（学習用の題材と本番実装を混同させないため）。
+  </p>
+  <table>
+    <tr><th>テーブル</th><th>カラム</th><th>用途</th></tr>
+    <tr><td><code>users</code></td><td>id, email, password_hash, created_at</td><td>登録ユーザー。パスワードはbcryptでハッシュ化</td></tr>
+    <tr><td><code>sessions</code></td><td>token, user_id, expires_at</td><td>ログインセッション（有効期間30日）</td></tr>
+    <tr><td><code>progress</code></td><td>user_id, problem_id, passed_at</td><td>合格したレッスン。(user_id, problem_id)が主キーで重複しない</td></tr>
+  </table>
+  <ul>
+    <li>ログインは必須ではない。<strong>未ログインでも採点は利用でき</strong>、その場合の進捗はブラウザのlocalStorageにのみ保存される</li>
+    <li>ログイン中はサーバー側の進捗が正となり、フロントエンドは <code>GET /api/progress</code> の結果でチェックマークを表示する</li>
+    <li>「ユーザーが存在しない」と「パスワードが違う」を区別せず、どちらも同じエラーを返す（登録済みメールアドレスの推測を防ぐため）。存在しないユーザーの場合もダミーハッシュとの照合を行い、応答時間の差からの推測も防いでいる</li>
+  </ul>
+  <div class="callout warn">
+    <strong>ローカル開発時のCookie設定</strong>
+    <p style="margin:0">
+      フロントエンド(:3000)とバックエンド(:8080)はポートが異なるためクロスサイト扱いになる。
+      本来は <code>SameSite=None</code> が必要だが、これは <code>Secure</code>（HTTPS）必須でローカル開発のhttpではCookieが拒否される。
+      そのため開発時は <code>SameSite=Lax</code> を使い、環境変数 <code>SECURE_COOKIE=true</code> を設定したときだけ
+      <code>Secure</code> + <code>SameSite=None</code> に切り替わるようにしている。<strong>本番（HTTPS）では必ず設定すること。</strong>
+    </p>
+  </div>
+
+  <h2>API仕様</h2>
+  <h3>GET /api/problems/{id}</h3>
+  <pre><code>{
+  "id": "web-api-basics-01",
+  "title": "HTTPサーバーを立てる",
+  "markdown": "# Lesson 1: ...",
+  "starterCode": "package main\n..."
+}</code></pre>
+  <p>存在しない <code>id</code> の場合は <code>404</code>。</p>
+
+  <h3>GET /api/problems/{id}/answer</h3>
+  <p>模範解答コードを返す。「答えを見る」ボタン押下時にフロントエンドから呼ばれる（初期表示のペイロードには含めず、明示的にリクエストされたときだけ返す）。</p>
+  <pre><code>{ "code": "package main\n..." }</code></pre>
+
+  <h3>POST /api/problems/{id}/submit</h3>
+  <p>リクエスト:</p>
+  <pre><code>{ "code": "package main\n..." }</code></pre>
+  <p>レスポンス:</p>
+  <pre><code>{
+  "passed": true,
+  "output": "=== RUN   TestHelloHandler\n--- PASS: TestHelloHandler (0.00s)\nPASS\nok  \tsubmission\t0.003s",
+  "durationMs": 1951
+}</code></pre>
+  <p>タイムアウト時は <code>"passed": false</code> と <code>"error": "timeout"</code> が付与される。</p>
+  <p>有効なセッションCookieが付いていて合格した場合は、あわせて進捗が記録される。</p>
+
+  <h3>POST /api/auth/signup</h3>
+  <p>リクエスト: <code>{ "email": "...", "password": "..." }</code></p>
+  <p>成功時は <code>201</code> で <code>{ "id": 1, "email": "..." }</code> を返し、セッションCookieを発行する。</p>
+  <ul>
+    <li><code>400</code>: メールアドレスの形式が不正、またはパスワードが8文字未満</li>
+    <li><code>409</code>: 既に登録済みのメールアドレス</li>
+  </ul>
+
+  <h3>POST /api/auth/login</h3>
+  <p>リクエスト: <code>{ "email": "...", "password": "..." }</code></p>
+  <p>成功時は <code>200</code> で <code>{ "id": 1, "email": "..." }</code> を返し、セッションCookieを発行する。失敗は一律 <code>401</code>。</p>
+
+  <h3>POST /api/auth/logout</h3>
+  <p>セッションを破棄しCookieを削除する。常に <code>204</code>。</p>
+
+  <h3>GET /api/me</h3>
+  <p>ログイン中なら <code>200</code> で <code>{ "id": 1, "email": "..." }</code>、未ログインなら <code>401</code>。</p>
+
+  <h3>GET /api/progress</h3>
+  <p>ログイン中なら <code>200</code> で <code>{ "completedProblemIds": ["concurrency-01", ...] }</code>、未ログインなら <code>401</code>。</p>
+
+  <h3>CORS</h3>
+  <p>
+    環境変数 <code>FRONTEND_ORIGIN</code>（デフォルト <code>http://localhost:3000</code>）で許可オリジンを指定。
+    セッションCookieをクロスオリジンでやり取りするため <code>Access-Control-Allow-Credentials: true</code> を返しており、
+    フロントエンド側も <code>credentials: "include"</code> を付けてリクエストしている。
+  </p>
+
+  <h2>フロントエンド構成</h2>
+  <ul>
+    <li><strong>Next.js 16 (App Router, TypeScript, Tailwind CSS v4)</strong></li>
+    <li><code>app/page.tsx</code>: トップページ。全コース・全レッスンへのリンク一覧</li>
+    <li><code>app/login/page.tsx</code> / <code>app/signup/page.tsx</code>: 認証ページ（中身は共通の <code>AuthForm</code>）</li>
+    <li><code>app/lessons/[id]/page.tsx</code>: サーバーコンポーネント。ページ表示時にバックエンドの <code>GET /api/problems/{id}</code> を取得し、<code>LessonWorkspace</code> に渡す。ヘッダーに「← レッスン一覧に戻る」リンクを表示</li>
+    <li><code>components/AuthProvider.tsx</code>: 認証状態と進捗を管理するContext。
+      <ul>
+        <li>マウント時に <code>GET /api/me</code> でログイン状態を確認し、ログイン中なら <code>GET /api/progress</code> も取得する</li>
+        <li>合格済みレッスンの情報源を切り替える: <strong>ログイン中はサーバー、未ログインはlocalStorage</strong></li>
+      </ul>
+    </li>
+    <li><code>components/LessonWorkspace.tsx</code>: クライアントコンポーネント。
+      <ul>
+        <li>左ペイン: <code>SlideViewer</code> で問題文をスライド形式に表示</li>
+        <li>右ペイン: <code>@uiw/react-codemirror</code> + <code>@codemirror/lang-go</code> によるGoシンタックスハイライト付きエディタ</li>
+        <li>「実行して採点」ボタン押下で <code>POST .../submit</code> を呼び、pass/fail・出力・所要時間を表示。合格時は進捗を記録して <code>SuccessModal</code> を表示</li>
+        <li>「答えを見る」ボタン押下で <code>GET .../answer</code> を呼び、模範解答コードを表示（再度押すと隠す。一度取得した内容はキャッシュして再取得しない）</li>
+      </ul>
+    </li>
+    <li><code>components/SuccessModal.tsx</code>: 合格時のポップアップ。「次のレッスンへ進む →」で次のレッスンに遷移する（最終レッスンではコース制覇の表示になる）</li>
+    <li><code>components/LessonList.tsx</code>: コース別のレッスン一覧。合格済みレッスンの右側にチェックマークを表示する</li>
+    <li><code>components/SlideViewer.tsx</code>: クライアントコンポーネント。<code>lib/slides.ts</code> の <code>splitIntoSlides</code> で問題文Markdownを <code>##</code> / <code>###</code> 見出し単位のスライド配列に分割し、前へ/次へボタン・ドットインジケーターでページ送りする（Progateのスライド画面を意識したUI）</li>
+    <li><code>lib/slides.ts</code>: Markdownをスライドに分割するパーサー。フェンス付きコードブロック内の <code>#</code> 始まりの行は見出しとして扱わない</li>
+    <li><code>lib/lessons.ts</code>: コース・レッスンの定義と順序。「次のレッスン」の解決もここが担当する</li>
+    <li><code>lib/api.ts</code>: <code>NEXT_PUBLIC_API_BASE_URL</code>（デフォルト <code>http://localhost:8080</code>）を参照するAPIクライアント。認証が絡むリクエストには <code>credentials: "include"</code> を付ける</li>
+  </ul>
+
+  <div class="callout warn">
+    <strong>react-markdownは生HTMLを描画しない</strong>
+    <p style="margin:0">
+      問題文のMarkdown内に生の <code>&lt;div&gt;</code> タグ等を書いても、<code>rehype-raw</code> を追加しない限り <code>react-markdown</code> は描画しない（黙って消える）。
+      注意書きなどを強調したい場合はMarkdown標準の引用（<code>&gt; </code>）を使うこと。Lesson 4の「重要な注意点」もこの理由で引用ブロックに書き直している。
+    </p>
+  </div>
+
+  <h2>セキュリティ上の考慮事項</h2>
+  <ul>
+    <li>問題IDは許可リスト経由でのみディレクトリに解決（パストラバーサル対策）</li>
+    <li>採点用テスト（<code>solution_test.go</code>）はサーバー側のみで扱い、クライアントに返さない</li>
+    <li>サンドボックスはネットワーク遮断・リソース制限・非root実行・使い捨てコンテナで隔離</li>
+    <li>Go側の <code>context</code> タイムアウトと、コンテナ名指定による強制削除の二重でハングを防止</li>
+    <li>採点結果の出力は一定サイズで切り詰め、肥大化したログの返却を防止</li>
+    <li>パスワードはbcrypt（<code>DefaultCost</code>）でハッシュ化して保存し、平文は一切保持しない</li>
+    <li>セッショントークンは <code>crypto/rand</code> による32バイトの乱数。HttpOnly Cookieで発行し、JavaScriptからは読めない</li>
+    <li>ログイン失敗は「ユーザーが存在しない」「パスワードが違う」を区別せず一律 <code>401</code>。存在しないユーザーでもダミーハッシュとの照合を行い、応答時間からの推測も防いでいる</li>
+    <li>期限切れセッションは参照時に検出して削除する</li>
+  </ul>
+
+  <div class="callout warn">
+    <strong>本番運用に向けて未対応の項目</strong>
+    <p style="margin:0">
+      現状はローカル開発向けの構成のため、公開前に少なくとも次の対応が必要:
+      HTTPS化と <code>SECURE_COOKIE=true</code> の設定、CSRF対策（現在はCookie + <code>SameSite=Lax</code> のみ）、
+      ログイン試行のレート制限、同時採点数の制御（現在はリクエストごとに無制限にコンテナを起動する）、
+      アプリDBのSQLiteからPostgreSQL等への移行検討。
+    </p>
+  </div>
+</main>
+
+<footer class="page">
+  このドキュメントはCodeForgeの機能追加に合わせて更新されます。
+</footer>

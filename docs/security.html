@@ -1,0 +1,573 @@
+<title>Go マイクロサービス設計ガイド ― セキュリティ要件</title>
+<style>
+  :root {
+    --bg: #f5f3ec;
+    --surface: #ffffff;
+    --surface-2: #eee9dc;
+    --ink: #1c2320;
+    --ink-soft: #57625c;
+    --ink-faint: #8b948d;
+    --accent: #0f6b5c;
+    --accent-strong: #0b4f45;
+    --accent-soft-bg: #dcebe5;
+    --line: #ddd6c3;
+    --amber: #a9762f;
+    --amber-soft-bg: #f1e3cb;
+    --danger: #b3261e;
+    --danger-soft-bg: #f6dedb;
+    --info: #2f5fa3;
+    --info-soft-bg: #dde6f2;
+    --code-bg: #1c2320;
+    --code-ink: #e8e6dd;
+    --shadow: 0 1px 2px rgba(28, 35, 32, 0.04), 0 8px 24px rgba(28, 35, 32, 0.05);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #13181a;
+      --surface: #1a2022;
+      --surface-2: #202829;
+      --ink: #e8e6dd;
+      --ink-soft: #a9b2ac;
+      --ink-faint: #6e7874;
+      --accent: #4fc3a8;
+      --accent-strong: #7adfc4;
+      --accent-soft-bg: #1e3530;
+      --line: #2a3234;
+      --amber: #d9a15b;
+      --amber-soft-bg: #332a1a;
+      --danger: #e08279;
+      --danger-soft-bg: #3a2220;
+      --info: #7fabdd;
+      --info-soft-bg: #1c2836;
+      --code-bg: #0f1314;
+      --code-ink: #dcdad0;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #13181a;
+    --surface: #1a2022;
+    --surface-2: #202829;
+    --ink: #e8e6dd;
+    --ink-soft: #a9b2ac;
+    --ink-faint: #6e7874;
+    --accent: #4fc3a8;
+    --accent-strong: #7adfc4;
+    --accent-soft-bg: #1e3530;
+    --line: #2a3234;
+    --amber: #d9a15b;
+    --amber-soft-bg: #332a1a;
+    --danger: #e08279;
+    --danger-soft-bg: #3a2220;
+    --info: #7fabdd;
+    --info-soft-bg: #1c2836;
+    --code-bg: #0f1314;
+    --code-ink: #dcdad0;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+  :root[data-theme="light"] {
+    --bg: #f5f3ec;
+    --surface: #ffffff;
+    --surface-2: #eee9dc;
+    --ink: #1c2320;
+    --ink-soft: #57625c;
+    --ink-faint: #8b948d;
+    --accent: #0f6b5c;
+    --accent-strong: #0b4f45;
+    --accent-soft-bg: #dcebe5;
+    --line: #ddd6c3;
+    --amber: #a9762f;
+    --amber-soft-bg: #f1e3cb;
+    --danger: #b3261e;
+    --danger-soft-bg: #f6dedb;
+    --info: #2f5fa3;
+    --info-soft-bg: #dde6f2;
+    --code-bg: #1c2320;
+    --code-ink: #e8e6dd;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+  }
+
+  .doc {
+    font-family: -apple-system, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", "Meiryo", sans-serif;
+    line-height: 1.9;
+    font-size: 16px;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 24px 96px;
+  }
+
+  .mono {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Consolas, Menlo, monospace;
+  }
+
+  a { color: var(--accent-strong); }
+
+  /* ---------- Site-wide page nav ---------- */
+  .site-nav {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    gap: 6px;
+    padding: 16px 0;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+    overflow-x: auto;
+  }
+  .site-nav a {
+    font-family: ui-monospace, monospace;
+    font-size: 12.5px;
+    letter-spacing: 0.03em;
+    padding: 6px 13px;
+    border-radius: 100px;
+    color: var(--ink-soft);
+    text-decoration: none;
+    white-space: nowrap;
+    border: 1px solid transparent;
+  }
+  .site-nav a:hover { color: var(--ink); background: var(--surface-2); }
+  .site-nav a.active {
+    color: var(--accent-strong);
+    background: var(--accent-soft-bg);
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+  .site-nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .term-link {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-decoration-color: currentColor;
+    text-underline-offset: 3px;
+  }
+  .term-link:hover { color: var(--accent-strong); text-decoration-color: var(--accent-strong); }
+  .term-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+
+  [id] { scroll-margin-top: 70px; }
+
+  /* ---------- Header ---------- */
+  .hero {
+    padding: 40px 0 40px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 40px;
+  }
+  .eyebrow {
+    font-family: ui-monospace, "SF Mono", Consolas, Menlo, monospace;
+    font-size: 12.5px;
+    letter-spacing: 0.14em;
+    color: var(--accent-strong);
+    text-transform: uppercase;
+    margin: 0 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 22px;
+    height: 1px;
+    background: var(--accent);
+    display: inline-block;
+  }
+  h1 {
+    font-size: clamp(28px, 4vw, 38px);
+    line-height: 1.35;
+    margin: 0 0 14px;
+    text-wrap: balance;
+    letter-spacing: -0.01em;
+  }
+  .lede {
+    color: var(--ink-soft);
+    font-size: 17px;
+    max-width: 640px;
+    margin: 0 0 26px;
+  }
+
+  /* ---------- Layout: nav + content ---------- */
+  .layout {
+    display: grid;
+    grid-template-columns: 200px minmax(0, 1fr);
+    gap: 48px;
+    align-items: start;
+  }
+  nav.toc {
+    position: sticky;
+    top: 70px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-right: 8px;
+  }
+  nav.toc .toc-label {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    font-family: ui-monospace, monospace;
+  }
+  nav.toc a {
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-size: 14px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    border-left: 2px solid transparent;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  nav.toc a:hover { color: var(--ink); background: var(--surface-2); }
+  nav.toc a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  nav.toc .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+  main { min-width: 0; }
+
+  section { margin-bottom: 56px; scroll-margin-top: 70px; }
+  section:last-child { margin-bottom: 0; }
+
+  .section-num {
+    font-family: ui-monospace, monospace;
+    font-size: 12.5px;
+    color: var(--accent-strong);
+    letter-spacing: 0.08em;
+  }
+  h2 {
+    font-size: 23px;
+    margin: 4px 0 8px;
+    text-wrap: balance;
+    letter-spacing: -0.005em;
+  }
+  .section-intro {
+    color: var(--ink-soft);
+    font-size: 15.5px;
+    max-width: 680px;
+    margin: 0 0 20px;
+  }
+  p { margin: 0 0 14px; }
+
+  /* ---------- Legend (how-to-read) ---------- */
+  .legend-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+  }
+  .legend-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-top: 3px solid var(--tier-color);
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .legend-card .tier-name {
+    font-family: ui-monospace, monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--tier-color);
+    margin-bottom: 6px;
+  }
+  .legend-card p { font-size: 13.5px; color: var(--ink-soft); margin: 0; }
+
+  /* ---------- Tier sections ---------- */
+  .tier-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    padding: 5px 14px;
+    border-radius: 100px;
+    border: 1px solid var(--tier-color);
+    color: var(--tier-color);
+    margin-bottom: 14px;
+  }
+  .tier-badge .n { font-weight: 700; }
+
+  .req-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .req-card {
+    display: flex;
+    gap: 14px;
+    padding: 15px 18px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--tier-color);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+  }
+  .req-card .area-tag {
+    font-family: ui-monospace, monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.03em;
+    padding: 3px 9px;
+    border-radius: 100px;
+    background: var(--surface-2);
+    color: var(--ink-faint);
+    white-space: nowrap;
+    flex-shrink: 0;
+    height: fit-content;
+    margin-top: 2px;
+  }
+  .req-card .req-title {
+    font-weight: 600;
+    font-size: 14.5px;
+    margin: 0 0 4px;
+    color: var(--ink);
+  }
+  .req-card .req-detail {
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    margin: 0;
+  }
+
+  #critical { --tier-color: var(--danger); }
+  #high { --tier-color: var(--amber); }
+  #medium { --tier-color: var(--info); }
+  #low { --tier-color: var(--ink-faint); }
+
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.toc {
+      position: static;
+      flex-direction: row;
+      overflow-x: auto;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 8px;
+    }
+    nav.toc .toc-label { display: none; }
+    nav.toc a { white-space: nowrap; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+
+<div class="doc">
+  <nav class="site-nav" aria-label="ページ切り替え">
+    <a href="architecture-guide.html">概要</a>
+    <a href="structure.html">実装ガイド</a>
+    <a href="proto.html">proto設計</a>
+    <a href="reference.html">リファレンス</a>
+    <a href="security.html" class="active">セキュリティ</a>
+  </nav>
+
+  <header class="hero">
+    <p class="eyebrow">Security Requirements</p>
+    <h1>セキュリティ要件<br>― 重要度ごとに何が必要かを決める ―</h1>
+    <p class="lede">「悪用された場合の被害の大きさ」を基準に4段階に分け、各項目をこのアプリの構成（Gateway・Auth/User/Task Service・gRPC・Redis・MySQL・Docker Compose）に即して具体化しました。</p>
+  </header>
+
+  <div class="layout">
+    <nav class="toc" aria-label="目次">
+      <span class="toc-label">Contents</span>
+      <a href="#legend">読み方</a>
+      <a href="#critical"><i class="dot" style="background:var(--danger);"></i>必須（Critical）</a>
+      <a href="#high"><i class="dot" style="background:var(--amber);"></i>重要（High）</a>
+      <a href="#medium"><i class="dot" style="background:var(--info);"></i>推奨（Medium）</a>
+      <a href="#low"><i class="dot" style="background:var(--ink-faint);"></i>任意（Low）</a>
+    </nav>
+
+    <main>
+      <section id="legend">
+        <p class="section-num">00</p>
+        <h2>重要度の読み方</h2>
+        <p class="section-intro">「実装コストの高さ」ではなく「欠けたときの被害の大きさ」で4段階に分類しています。必須から順に対応してください。</p>
+
+        <div class="legend-grid">
+          <div class="legend-card" style="--tier-color: var(--danger);">
+            <p class="tier-name">必須 / CRITICAL</p>
+            <p>欠けるとなりすまし・情報漏洩など致命的な被害に直結する。この状態でのリリースは不可。</p>
+          </div>
+          <div class="legend-card" style="--tier-color: var(--amber);">
+            <p class="tier-name">重要 / HIGH</p>
+            <p>欠けると深刻な被害につながり得る。初期リリース後、早い段階で対応する。</p>
+          </div>
+          <div class="legend-card" style="--tier-color: var(--info);">
+            <p class="tier-name">推奨 / MEDIUM</p>
+            <p>実装するとリスクをさらに下げられる、ベストプラクティス寄りの対策。</p>
+          </div>
+          <div class="legend-card" style="--tier-color: var(--ink-faint);">
+            <p class="tier-name">任意 / LOW</p>
+            <p>事業規模の拡大やコンプライアンス要件に応じて検討する発展的な対策。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="critical">
+        <p class="section-num">01</p>
+        <div class="tier-badge"><span class="n">MUST</span> 必須（Critical）― これがないとリリースできない</div>
+        <h2>必須要件</h2>
+        <p class="section-intro">なりすまし・情報漏洩・他人のデータへの不正アクセスに直結する、実装必須の項目です。</p>
+
+        <div class="req-list">
+          <div class="req-card">
+            <span class="area-tag">認証</span>
+            <div>
+              <p class="req-title">パスワードは bcrypt でハッシュ化して保存する</p>
+              <p class="req-detail">平文保存・可逆暗号化は禁止。User Service の CreateUser は <code class="mono">password_hash</code> のみを受け取り、ハッシュ化は Auth Service 側で完了させる。</p>
+            </div>
+          </div>
+          <div class="req-card">
+            <span class="area-tag">認証</span>
+            <div>
+              <p class="req-title"><a class="term-link" href="reference.html#term-jwt">JWT</a> の署名鍵はシークレットとして管理する</p>
+              <p class="req-detail">環境変数や Docker Secrets 経由で渡し、リポジトリにコミットしない。<code class="mono">.env</code> は必ず <code class="mono">.gitignore</code> に含める。</p>
+            </div>
+          </div>
+          <div class="req-card">
+            <span class="area-tag">認可</span>
+            <div>
+              <p class="req-title">リクエストの user_id と操作対象の user_id を必ず突き合わせる</p>
+              <p class="req-detail">Task/User Service は、トークンから取り出した user_id と操作対象のリソースの所有者が一致するか検証する。これを怠ると他人のタスクを閲覧・編集できてしまう（水平権限昇格）。</p>
+            </div>
+          </div>
+          <div class="req-card">
+            <span class="area-tag">データ</span>
+            <div>
+              <p class="req-title">SQL はプレースホルダを使い、文字列連結で組み立てない</p>
+              <p class="req-detail"><code class="mono">database/sql</code> の <code class="mono">?</code> プレースホルダを必ず使用する。ユーザー入力を直接クエリ文字列へ埋め込まない（SQL インジェクション対策）。</p>
+            </div>
+          </div>
+          <div class="req-card">
+            <span class="area-tag">インフラ</span>
+            <div>
+              <p class="req-title">外部公開は <a class="term-link" href="reference.html#term-gateway">Gateway</a> のみに限定する</p>
+              <p class="req-detail">docker-compose 上で Auth/User/Task Service のポートを外部公開せず、内部ネットワークからのみ到達可能にする。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="high">
+        <p class="section-num">02</p>
+        <div class="tier-badge"><span class="n">HIGH</span> 重要（High）― 早い段階で対応する</div>
+        <h2>重要要件</h2>
+        <p class="section-intro">必須ほど即座に致命的ではないものの、放置すると深刻な被害につながる項目です。</p>
+
+        <div class="req-list">
+          <div class="req-card">
+            <span class="area-tag">認証</span>
+            <div>
+              <p class="req-title">アクセストークンは短命にし、リフレッシュトークンと分離する</p>
+              <p class="req-detail">アクセストークンの有効期限は 15分程度に短く保ち、長期間有効なリフレッシュトークンとは別トークンとして扱う。漏洩時の被害範囲を限定する。</p>
+            </div>
+          </div>
+          <div class="req-card">
+            <span class="area-tag">通信</span>
+            <div>
+              <p class="req-title">Gateway にレート制限を実装する</p>
+              <p class="req-detail">特にログインエンドポイントへの総当たり攻撃（ブルートフォース）を防ぐため、IPやアカウント単位でリクエスト数を制限する。</p>
+            </div>
+          </div>
+          <div class="req-card">
+            <span class="area-tag">通信</span>
+            <div>
+              <p class="req-title">CORS の許可オリジンをホワイトリストで管理する</p>
+              <p class="req-detail">Gateway の CORS 設定でワイルドカード（<code class="mono">*</code>）を使わず、フロントエンドのドメインを明示的に列挙する。</p>
+            </div>
+          </div>
+          <div class="req-card">
+            <span class="area-tag">データ</span>
+            <div>
+              <p class="req-title"><a class="term-link" href="reference.html#term-redis">Redis</a> のセッション情報に TTL を設定する</p>
+              <p class="req-detail">セッションキーには必ず有効期限を付与し、ログアウト後や期限切れ後にセッションが残り続けないようにする。</p>
+            </div>
+          </div>
+          <div class="req-card">
+            <span class="area-tag">運用</span>
+            <div>
+              <p class="req-title"><a class="term-link" href="reference.html#term-github-actions">GitHub Actions</a> に依存脆弱性スキャンを組み込む</p>
+              <p class="req-detail"><code class="mono">govulncheck</code> や Dependabot を CI に組み込み、既知の脆弱性を含む依存ライブラリの混入を早期に検知する。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="medium">
+        <p class="section-num">03</p>
+        <div class="tier-badge"><span class="n">MED</span> 推奨（Medium）― ベストプラクティス</div>
+        <h2>推奨要件</h2>
+        <p class="section-intro">必須・重要ほどの緊急性はないものの、実装しておくとリスクをさらに下げられる項目です。</p>
+
+        <div class="req-list">
+          <div class="req-card">
+            <span class="area-tag">監視</span>
+            <div>
+              <p class="req-title">認証失敗・アクセス拒否を監査ログとして残す</p>
+              <p class="req-detail">構造化ログにリクエストIDを含め、ログイン失敗や認可エラーを追跡できるようにする。異常検知の土台になる。</p>
+            </div>
+          </div>
+          <div class="req-card">
+            <span class="area-tag">認証</span>
+            <div>
+              <p class="req-title">パスワードポリシーを導入する</p>
+              <p class="req-detail">最低文字数や既知漏洩パスワードとの照合（Have I Been Pwned 等）を Register 時に行う。</p>
+            </div>
+          </div>
+          <div class="req-card">
+            <span class="area-tag">通信</span>
+            <div>
+              <p class="req-title"><a class="term-link" href="reference.html#term-grpc">gRPC</a> の内部通信を mTLS で暗号化する</p>
+              <p class="req-detail">Gateway ⇔ 各サービス間の通信にも TLS（相互認証）を導入し、内部ネットワークが侵害された場合の盗聴・なりすましを防ぐ。</p>
+            </div>
+          </div>
+          <div class="req-card">
+            <span class="area-tag">インフラ</span>
+            <div>
+              <p class="req-title">Docker イメージは非 root ユーザーで実行する</p>
+              <p class="req-detail">マルチステージビルドで最終イメージを最小化し、コンテナ内のプロセスを非特権ユーザーで動かす。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="low">
+        <p class="section-num">04</p>
+        <div class="tier-badge"><span class="n">LOW</span> 任意（Low）― 発展的な対策</div>
+        <h2>任意要件</h2>
+        <p class="section-intro">事業規模の拡大やコンプライアンス要件に応じて、必要になった時点で検討すればよい項目です。</p>
+
+        <div class="req-list">
+          <div class="req-card">
+            <span class="area-tag">監視</span>
+            <div>
+              <p class="req-title">異常なログイン試行・アクセスパターンを検知するアラートを設定する</p>
+              <p class="req-detail">通常と異なる地域からのログインや、短時間での大量アクセスを検知して通知する仕組みを導入する。</p>
+            </div>
+          </div>
+          <div class="req-card">
+            <span class="area-tag">運用</span>
+            <div>
+              <p class="req-title">定期的な脆弱性診断・ペネトレーションテストを実施する</p>
+              <p class="req-detail">サービスの規模や取り扱うデータの機微度に応じて、外部診断を定期実行する。</p>
+            </div>
+          </div>
+          <div class="req-card">
+            <span class="area-tag">フロントエンド</span>
+            <div>
+              <p class="req-title">ブラウザ向けセキュリティヘッダーを付与する</p>
+              <p class="req-detail">Content-Security-Policy や X-Content-Type-Options などを Gateway のレスポンスヘッダーに追加する。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>

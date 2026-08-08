@@ -1,0 +1,210 @@
+<title>CodeForge ドキュメント ― 概要</title>
+<style>
+  :root {
+    --bg: #f7f8f5;
+    --surface: #ffffff;
+    --surface-2: #eef2ec;
+    --ink: #14201a;
+    --ink-soft: #4b5b52;
+    --ink-faint: #8a988e;
+    --accent: #059669;
+    --accent-strong: #047857;
+    --accent-soft-bg: #d1fae5;
+    --line: #dde5da;
+    --amber: #b45309;
+    --amber-soft-bg: #fef3c7;
+    --code-bg: #14201a;
+    --code-ink: #e7ece7;
+    --shadow: 0 1px 2px rgba(20, 32, 26, 0.04), 0 8px 24px rgba(20, 32, 26, 0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1512;
+      --surface: #16201b;
+      --surface-2: #1c2721;
+      --ink: #e7ece7;
+      --ink-soft: #a9b8ad;
+      --ink-faint: #6b7a70;
+      --accent: #34d399;
+      --accent-strong: #6ee7b7;
+      --accent-soft-bg: #064e3b;
+      --line: #26332c;
+      --amber: #fbbf24;
+      --amber-soft-bg: #451a03;
+      --code-bg: #0b100d;
+      --code-ink: #d7ded8;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1512; --surface: #16201b; --surface-2: #1c2721;
+    --ink: #e7ece7; --ink-soft: #a9b8ad; --ink-faint: #6b7a70;
+    --accent: #34d399; --accent-strong: #6ee7b7; --accent-soft-bg: #064e3b;
+    --line: #26332c; --amber: #fbbf24; --amber-soft-bg: #451a03;
+    --code-bg: #0b100d; --code-ink: #d7ded8;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+  :root[data-theme="light"] {
+    --bg: #f7f8f5; --surface: #ffffff; --surface-2: #eef2ec;
+    --ink: #14201a; --ink-soft: #4b5b52; --ink-faint: #8a988e;
+    --accent: #059669; --accent-strong: #047857; --accent-soft-bg: #d1fae5;
+    --line: #dde5da; --amber: #b45309; --amber-soft-bg: #fef3c7;
+    --code-bg: #14201a; --code-ink: #e7ece7;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+    line-height: 1.7;
+  }
+  header.top {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    box-shadow: var(--shadow);
+  }
+  .top-inner {
+    max-width: 920px; margin: 0 auto; padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  }
+  .brand { font-weight: 800; font-size: 1.1rem; letter-spacing: -0.01em; }
+  .brand span { color: var(--accent-strong); }
+  nav.tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+  nav.tabs a {
+    text-decoration: none; color: var(--ink-soft); font-size: 0.9rem;
+    padding: 6px 12px; border-radius: 999px; border: 1px solid transparent;
+  }
+  nav.tabs a:hover { background: var(--surface-2); color: var(--ink); }
+  nav.tabs a.active { background: var(--accent-soft-bg); color: var(--accent-strong); font-weight: 700; }
+
+  main { max-width: 920px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 2rem; margin: 0 0 8px; letter-spacing: -0.01em; }
+  h2 { font-size: 1.35rem; margin: 40px 0 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+  h2:first-of-type { border-top: none; padding-top: 0; }
+  h3 { font-size: 1.05rem; margin: 24px 0 8px; color: var(--ink); }
+  p { color: var(--ink-soft); }
+  .lede { font-size: 1.1rem; color: var(--ink-soft); margin-bottom: 28px; }
+
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin: 20px 0; }
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+    padding: 18px 20px; box-shadow: var(--shadow); text-decoration: none; color: var(--ink);
+    transition: transform 0.15s ease;
+  }
+  .card:hover { transform: translateY(-2px); }
+  .card .tag { font-size: 0.75rem; color: var(--accent-strong); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+  .card h3 { margin: 6px 0 6px; }
+  .card p { margin: 0; font-size: 0.92rem; }
+
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--ink-faint); font-weight: 700; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; }
+
+  code { background: var(--surface-2); padding: 2px 6px; border-radius: 6px; font-size: 0.88em; }
+  pre {
+    background: var(--code-bg); color: var(--code-ink); padding: 16px 18px; border-radius: 12px;
+    overflow-x: auto; font-size: 0.85rem; line-height: 1.6;
+  }
+  pre code { background: none; padding: 0; color: inherit; }
+
+  .callout {
+    border-radius: 12px; padding: 14px 18px; margin: 18px 0; font-size: 0.92rem;
+    background: var(--surface-2); border: 1px solid var(--line);
+  }
+  .callout.note { background: var(--accent-soft-bg); border-color: transparent; }
+  .callout.warn { background: var(--amber-soft-bg); border-color: transparent; }
+  .callout strong { display: block; margin-bottom: 4px; }
+
+  .status-badge {
+    display: inline-block; font-size: 0.75rem; font-weight: 700; padding: 3px 10px; border-radius: 999px;
+  }
+  .status-done { background: var(--accent-soft-bg); color: var(--accent-strong); }
+  .status-next { background: var(--amber-soft-bg); color: var(--amber); }
+  .status-todo { background: var(--surface-2); color: var(--ink-faint); }
+
+  ul, ol { color: var(--ink-soft); }
+  li { margin-bottom: 4px; }
+
+  footer.page {
+    max-width: 920px; margin: 0 auto; padding: 20px 24px 60px; color: var(--ink-faint); font-size: 0.85rem;
+  }
+</style>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">Code<span>Forge</span> Docs</div>
+    <nav class="tabs">
+      <a href="index.html" class="active">概要</a>
+      <a href="requirements.html">要件定義</a>
+      <a href="plan.html">実装プラン</a>
+      <a href="design.html">詳細設計</a>
+      <a href="setup.html">起動方法</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <h1>CodeForge</h1>
+  <p class="lede">
+    コードを書いて実行しながら学ぶ、Progate風のプログラミング学習サイト。
+    第一弾はGoの応用編（Web API・DB連携・認証・並行処理）を扱う。
+  </p>
+
+  <div class="callout note">
+    <strong>現在地点</strong>
+    全5コース27レッスンのコンテンツと、ユーザー認証・学習進捗の保存まで実装・動作確認済み。
+    残るのはデザインのブラッシュアップ（Progate風のポップな見た目）と本番デプロイ。
+    詳細は <a href="plan.html">実装プラン</a> を参照。
+  </div>
+
+  <h2>コース一覧</h2>
+  <table>
+    <tr><th>#</th><th>Course</th><th>レッスン数</th><th>内容</th></tr>
+    <tr><td>1</td><td>ゴルーチン・並行処理</td><td>6</td><td>goroutine、channel、Mutex、select、context、ワーカープール</td></tr>
+    <tr><td>2</td><td>Web APIの基礎</td><td>6</td><td><code>net/http</code>によるルーティング・リクエスト/レスポンス・ミドルウェア</td></tr>
+    <tr><td>3</td><td>フレームワークで作るAPI</td><td>5</td><td>Ginのルーティング・バリデーション・ミドルウェア</td></tr>
+    <tr><td>4</td><td>データベース連携</td><td>5</td><td><code>database/sql</code>とGORMによるCRUD</td></tr>
+    <tr><td>5</td><td>認証・JWT</td><td>5</td><td>bcrypt、JWT発行/検証、認証ミドルウェア</td></tr>
+  </table>
+  <p>各コースの最終レッスンは「道場」として、そのコースの内容を統合するまとめ問題になっている。</p>
+
+  <h2>ドキュメント一覧</h2>
+  <div class="card-grid">
+    <a class="card" href="requirements.html">
+      <span class="tag">Requirements</span>
+      <h3>要件定義</h3>
+      <p>対象ユーザー、コア機能、技術スタック、採点方式・DB環境などの前提となる意思決定をまとめたもの。</p>
+    </a>
+    <a class="card" href="plan.html">
+      <span class="tag">Plan</span>
+      <h3>実装プラン</h3>
+      <p>全5コース27レッスンの構成と各レッスンの一覧、これまでの進捗と今後のロードマップ。</p>
+    </a>
+    <a class="card" href="design.html">
+      <span class="tag">Design</span>
+      <h3>詳細設計</h3>
+      <p>サンドボックス実行の仕組み、API仕様、ディレクトリ構成、フロントエンドの構造など技術的な詳細。</p>
+    </a>
+    <a class="card" href="setup.html">
+      <span class="tag">Setup</span>
+      <h3>起動方法</h3>
+      <p>ローカル環境でバックエンド・フロントエンドを立ち上げて動作確認するための手順。</p>
+    </a>
+  </div>
+
+  <h2>プロジェクトの前提</h2>
+  <ul>
+    <li>対象言語: Go（他言語経験者向け、応用編に特化。基礎文法は扱わない）</li>
+    <li>バックエンド: Go / フロントエンド: Next.js（React）</li>
+    <li>コード実行: Dockerサンドボックス内で <code>go test</code> による自動採点</li>
+    <li>ホスティング: 将来的にクラウド（AWS/GCP等）での本格運用を想定</li>
+    <li>リポジトリ: <code>github.com/syakesoba/codeforge</code></li>
+  </ul>
+</main>
+
+<footer class="page">
+  このドキュメントはCodeForgeの機能追加に合わせて更新されます。
+</footer>

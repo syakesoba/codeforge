@@ -1,0 +1,25 @@
+# アプリケーションのSQLiteデータベース（ユーザー・セッション・進捗）
+data/
+
+# 開発時のログ
+server.log
+frontend/frontend.log
+
+# Goのビルド成果物
+/codeforge
+/server
+*.exe
+*.test
+
+# 環境変数（秘密情報を含む可能性があるため除外）
+.env
+.env.*
+
+# エディタ・OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Claude Code の個人用ローカル設定
+.claude/settings.local.json
