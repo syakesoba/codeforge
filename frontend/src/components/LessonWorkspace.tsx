@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { go } from "@codemirror/lang-go";
+import { indentUnit } from "@codemirror/language";
 import {
   linter,
   lintGutter,
@@ -76,6 +77,11 @@ export default function LessonWorkspace({ problem }: { problem: Problem }) {
   const [loadingAnswer, setLoadingAnswer] = useState(false);
   const [answerError, setAnswerError] = useState<string | null>(null);
 
+  // CodeMirrorの診断ホバーツールチップからの「インポートを自動修正」は
+  // マウスを正確に赤い波線へ重ねないと出てこず気づきにくいため、
+  // 未解決のimportがある間は常設のボタンでも同じ修正を実行できるようにする。
+  const [unresolvedImports, setUnresolvedImports] = useState<string[]>([]);
+
   // 自動保存の初期読み込みが終わるまでは、読み込み前のコードを保存で
   // 上書きしてしまわないようにガードする。
   const draftLoadedRef = useRef(false);
@@ -110,6 +116,7 @@ export default function LessonWorkspace({ problem }: { problem: Problem }) {
       } else {
         lastSavedCodeRef.current = problem.starterCode;
       }
+      setUnresolvedImports([]);
       draftLoadedRef.current = true;
     })();
 
@@ -150,15 +157,16 @@ export default function LessonWorkspace({ problem }: { problem: Problem }) {
     async (view: EditorView) => {
       try {
         const current = view.state.doc.toString();
-        const fixed = await formatCode(problem.id, current);
+        const fixed = await formatCode(problem.id, current, unresolvedImports);
         view.dispatch({
           changes: { from: 0, to: view.state.doc.length, insert: fixed },
         });
+        setUnresolvedImports([]);
       } catch {
         // 失敗しても何もしない（次の入力で再チェックされる）
       }
     },
-    [problem.id],
+    [problem.id, unresolvedImports],
   );
 
   const goLinter = useMemo(
@@ -180,6 +188,15 @@ export default function LessonWorkspace({ problem }: { problem: Problem }) {
             return [];
           }
 
+          const missingImports = Array.from(
+            new Set(
+              diagnostics
+                .filter((d) => d.message.startsWith("undefined: "))
+                .map((d) => d.message.slice("undefined: ".length)),
+            ),
+          );
+          setUnresolvedImports(missingImports);
+
           return diagnostics.map((d) =>
             toCMDiagnostic(d, view, applyFixImports),
           );
@@ -193,8 +210,9 @@ export default function LessonWorkspace({ problem }: { problem: Problem }) {
     setFormatting(true);
     setErrorMessage(null);
     try {
-      const fixed = await formatCode(problem.id, code);
+      const fixed = await formatCode(problem.id, code, unresolvedImports);
       setCode(fixed);
+      setUnresolvedImports([]);
     } catch (err) {
       setErrorMessage(
         err instanceof Error ? err.message : "フォーマットに失敗しました",
@@ -259,17 +277,37 @@ export default function LessonWorkspace({ problem }: { problem: Problem }) {
           <CodeMirror
             value={code}
             height="360px"
-            extensions={[go(), lintGutter(), goLinter]}
+            // GoはgofmtでタブインデントするためindentUnitをタブにする。
+            // 未指定だとCodeMirrorのデフォルト（スペース2つ）が使われ、
+            // 改行時に挿入される字下げが既存のタブ行と揃わなくなる。
+            extensions={[go(), indentUnit.of("\t"), lintGutter(), goLinter]}
             onChange={setCode}
           />
         </div>
+
+        {unresolvedImports.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-sky-200 bg-sky-50 px-4 py-2 text-sm text-sky-800 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-200">
+            <span>
+              未解決のimportがあります:{" "}
+              <code className="font-mono">{unresolvedImports.join(", ")}</code>
+            </span>
+            <button
+              type="button"
+              onClick={handleFormat}
+              disabled={formatting}
+              className="shrink-0 rounded-full bg-sky-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {formatting ? "修正中..." : "インポートを自動修正"}
+            </button>
+          </div>
+        )}
 
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={handleSubmit}
             disabled={submitting}
-            className="rounded-full bg-emerald-600 px-6 py-2 font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-full bg-orange-500 px-6 py-2 font-semibold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {submitting ? "採点中..." : "実行して採点"}
           </button>

@@ -3,11 +3,14 @@ export default function ProgressBar({
   total,
   label,
   className = "",
+  fillClassName = "bg-emerald-600",
 }: {
   completed: number;
   total: number;
   label?: string;
   className?: string;
+  /** 塗りつぶし色のTailwindクラス（コースごとのアクセントカラーに差し替える場合に使う）。 */
+  fillClassName?: string;
 }) {
   const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
 
@@ -29,7 +32,7 @@ export default function ProgressBar({
         className="h-2 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800"
       >
         <div
-          className="h-full rounded-full bg-emerald-600 transition-[width] duration-500"
+          className={`h-full rounded-full transition-[width] duration-500 ${fillClassName}`}
           style={{ width: `${percent}%` }}
         />
       </div>

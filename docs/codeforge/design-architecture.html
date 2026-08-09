@@ -178,8 +178,10 @@
     main.go                        HTTPサーバーのエントリポイント・問題/採点エンドポイント
     authhandlers.go                サインアップ/ログイン/ログアウト/me/progress
     drafthandlers.go               コード自動保存の取得/保存
+    csrf.go                        Double Submit CookieによるCSRF対策
+    ratelimit.go                   クライアントIP取得・レート制限ミドルウェア
   internal/judge/
-    judge.go                       サンドボックス実行のオーケストレーション
+    judge.go                       サンドボックス実行のオーケストレーション・同時実行数の制御（キューイング）
     docker.go                      docker run 呼び出し（exec.CommandContext）
     result.go                      `go test -json` 出力の整形（表示用）
   internal/lint/
@@ -189,6 +191,8 @@
     problems.go                    problemID -> ディレクトリ の許可リスト・ロード処理
   internal/auth/
     auth.go                        サインアップ・ログイン・セッション管理（bcrypt）
+  internal/ratelimit/
+    ratelimit.go                   キー単位の固定ウィンドウ方式レート制限（インメモリ）
   internal/store/
     store.go                       SQLite（users / sessions / progress / code_drafts）
   problems/

@@ -15,6 +15,7 @@ import (
 	"github.com/syakesoba/codeforge/internal/judge"
 	"github.com/syakesoba/codeforge/internal/lint"
 	"github.com/syakesoba/codeforge/internal/problems"
+	"github.com/syakesoba/codeforge/internal/ratelimit"
 	"github.com/syakesoba/codeforge/internal/store"
 )
 
@@ -44,6 +45,9 @@ type checkResponse struct {
 
 type formatRequest struct {
 	Code string `json:"code"`
+	// Hints は呼び出し側（/checkの結果）で既に判明している未解決の識別子名。
+	// 指定するとgo buildによる再検証を省略できるため応答が速くなる。
+	Hints []string `json:"hints"`
 }
 
 type formatResponse struct {
@@ -68,18 +72,24 @@ func main() {
 	// 本番(HTTPS)では SECURE_COOKIE=true を設定すること。
 	secureCookie := os.Getenv("SECURE_COOKIE") == "true"
 
+	// ログイン試行のブルートフォース対策。IPアドレス単位で制限する
+	// （単一プロセスでの運用のためインメモリ実装。リバースプロキシ配下での
+	// 運用に切り替える場合はクライアントIPの取得方法を見直すこと）。
+	loginLimiter := ratelimit.New(10, time.Minute)
+	signupLimiter := ratelimit.New(5, time.Minute)
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/problems/{id}", getProblemHandler())
 	mux.HandleFunc("GET /api/problems/{id}/answer", getAnswerHandler())
-	mux.HandleFunc("POST /api/problems/{id}/submit", submitHandler(runner, authSvc, st))
+	mux.HandleFunc("POST /api/problems/{id}/submit", requireCSRF(submitHandler(runner, authSvc, st)))
 	mux.HandleFunc("POST /api/problems/{id}/check", checkHandler())
 	mux.HandleFunc("POST /api/problems/{id}/format", formatHandler())
 	mux.HandleFunc("GET /api/problems/{id}/draft", getDraftHandler(authSvc, st))
-	mux.HandleFunc("POST /api/problems/{id}/draft", saveDraftHandler(authSvc, st))
+	mux.HandleFunc("POST /api/problems/{id}/draft", requireCSRF(saveDraftHandler(authSvc, st)))
 
-	mux.HandleFunc("POST /api/auth/signup", signUpHandler(authSvc, secureCookie))
-	mux.HandleFunc("POST /api/auth/login", logInHandler(authSvc, secureCookie))
-	mux.HandleFunc("POST /api/auth/logout", logOutHandler(authSvc, secureCookie))
+	mux.HandleFunc("POST /api/auth/signup", rateLimited(signupLimiter, requireCSRF(signUpHandler(authSvc, secureCookie))))
+	mux.HandleFunc("POST /api/auth/login", rateLimited(loginLimiter, requireCSRF(logInHandler(authSvc, secureCookie))))
+	mux.HandleFunc("POST /api/auth/logout", requireCSRF(logOutHandler(authSvc, secureCookie)))
 	mux.HandleFunc("GET /api/me", meHandler(authSvc))
 	mux.HandleFunc("GET /api/progress", progressHandler(authSvc, st))
 
@@ -90,7 +100,8 @@ func main() {
 
 	addr := ":8080"
 	log.Printf("listening on %s (allowing CORS from %s, db=%s)", addr, frontendOrigin, dbPath)
-	if err := http.ListenAndServe(addr, withCORS(frontendOrigin, mux)); err != nil {
+	handler := withCORS(frontendOrigin, withCSRFCookie(secureCookie, mux))
+	if err := http.ListenAndServe(addr, handler); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -99,7 +110,7 @@ func withCORS(origin string, h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", origin)
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, "+csrfHeaderName)
 		// Cookieによるセッションをクロスオリジンで送受信するために必要。
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		if r.Method == http.MethodOptions {
@@ -257,7 +268,7 @@ func formatHandler() http.HandlerFunc {
 		ctx, cancel := context.WithTimeout(r.Context(), checkTimeout)
 		defer cancel()
 
-		formatted, err := lint.FixImports(ctx, goMod, goSum, req.Code)
+		formatted, err := lint.FixImports(ctx, goMod, goSum, req.Code, req.Hints)
 		if err != nil {
 			// 構文エラーがあるとgoimportsは整形できない。ユーザーへの
 			// エラーメッセージとしてそのまま返す。

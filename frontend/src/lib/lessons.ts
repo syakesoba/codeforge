@@ -1,3 +1,5 @@
+import type { CourseColorKey } from "@/lib/courseColors";
+
 export type LessonMeta = {
   id: string;
   title: string;
@@ -6,6 +8,8 @@ export type LessonMeta = {
 export type Course = {
   id: string;
   title: string;
+  /** コースカードやレッスンページで使うアクセントカラー。 */
+  accent: CourseColorKey;
   lessons: LessonMeta[];
 };
 
@@ -15,6 +19,7 @@ export const courses: Course[] = [
   {
     id: "concurrency",
     title: "ゴルーチン・並行処理",
+    accent: "violet",
     lessons: [
       { id: "concurrency-01", title: "Lesson 1: ゴルーチンとWaitGroup" },
       { id: "concurrency-02", title: "Lesson 2: channelでやり取りする" },
@@ -27,6 +32,7 @@ export const courses: Course[] = [
   {
     id: "web-api-basics",
     title: "Web APIの基礎",
+    accent: "sky",
     lessons: [
       { id: "web-api-basics-01", title: "Lesson 1: HTTPサーバーを立てる" },
       { id: "web-api-basics-02", title: "Lesson 2: ルーティングとパスパラメータ" },
@@ -39,6 +45,7 @@ export const courses: Course[] = [
   {
     id: "gin-api",
     title: "フレームワークで作るAPI（Gin）",
+    accent: "teal",
     lessons: [
       { id: "gin-api-01", title: "Lesson 1: Ginの基本" },
       {
@@ -56,6 +63,7 @@ export const courses: Course[] = [
   {
     id: "database",
     title: "データベース連携",
+    accent: "amber",
     lessons: [
       {
         id: "database-01",
@@ -73,6 +81,7 @@ export const courses: Course[] = [
   {
     id: "auth-jwt",
     title: "認証・JWT",
+    accent: "rose",
     lessons: [
       { id: "auth-jwt-01", title: "Lesson 1: パスワードをハッシュ化する" },
       { id: "auth-jwt-02", title: "Lesson 2: JWTを発行する" },
