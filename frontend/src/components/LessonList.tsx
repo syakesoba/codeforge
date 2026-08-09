@@ -3,19 +3,29 @@
 import Link from "next/link";
 import { courses } from "@/lib/lessons";
 import { useAuth } from "@/components/AuthProvider";
+import ProgressBar from "@/components/ProgressBar";
 
 export default function LessonList() {
   const { completed } = useAuth();
 
   return (
     <div className="flex flex-col gap-6">
-      {courses.map((course) => (
+      {courses.map((course) => {
+        const completedInCourse = course.lessons.filter((l) =>
+          completed.has(l.id),
+        ).length;
+        return (
         <div
           key={course.id}
           className="rounded-xl border border-black/10 p-5 dark:border-white/10"
         >
           <p className="text-sm text-neutral-500">Course</p>
-          <h2 className="mb-3 text-lg font-semibold">{course.title}</h2>
+          <h2 className="mb-2 text-lg font-semibold">{course.title}</h2>
+          <ProgressBar
+            completed={completedInCourse}
+            total={course.lessons.length}
+            className="mb-3"
+          />
           <ul className="flex flex-col gap-2">
             {course.lessons.map((lesson) => (
               <li key={lesson.id}>
@@ -38,7 +48,8 @@ export default function LessonList() {
             ))}
           </ul>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

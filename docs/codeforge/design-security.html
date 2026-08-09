@@ -1,4 +1,4 @@
-<title>CodeForge ドキュメント ― 詳細設計</title>
+<title>CodeForge ドキュメント ― 詳細設計: セキュリティ</title>
 <style>
   :root {
     --bg: #f7f8f5;
@@ -79,48 +79,20 @@
   h1 { font-size: 2rem; margin: 0 0 8px; letter-spacing: -0.01em; }
   h2 { font-size: 1.35rem; margin: 40px 0 12px; padding-top: 8px; border-top: 1px solid var(--line); }
   h2:first-of-type { border-top: none; padding-top: 0; }
-  h3 { font-size: 1.05rem; margin: 24px 0 8px; color: var(--ink); }
   p { color: var(--ink-soft); }
   .lede { font-size: 1.1rem; color: var(--ink-soft); margin-bottom: 20px; }
 
-  .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin: 20px 0; }
-  .card {
-    background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
-    padding: 18px 20px; box-shadow: var(--shadow); text-decoration: none; color: var(--ink);
-    transition: transform 0.15s ease;
-  }
-  .card:hover { transform: translateY(-2px); }
-  .card .tag { font-size: 0.75rem; color: var(--accent-strong); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
-  .card h3 { margin: 6px 0 6px; }
-  .card p { margin: 0; font-size: 0.92rem; }
-
-  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.88rem; }
-  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  th { color: var(--ink-faint); font-weight: 700; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; }
-
   code { background: var(--surface-2); padding: 2px 6px; border-radius: 6px; font-size: 0.88em; }
-  pre {
-    background: var(--code-bg); color: var(--code-ink); padding: 16px 18px; border-radius: 12px;
-    overflow-x: auto; font-size: 0.83rem; line-height: 1.6;
-  }
-  pre code { background: none; padding: 0; color: inherit; }
 
   .callout {
     border-radius: 12px; padding: 14px 18px; margin: 18px 0; font-size: 0.92rem;
     background: var(--surface-2); border: 1px solid var(--line);
   }
-  .callout.note { background: var(--accent-soft-bg); border-color: transparent; }
   .callout.warn { background: var(--amber-soft-bg); border-color: transparent; }
   .callout strong { display: block; margin-bottom: 4px; }
 
   ul, ol { color: var(--ink-soft); }
   li { margin-bottom: 4px; }
-
-  .diagram {
-    background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
-    padding: 20px; box-shadow: var(--shadow); font-size: 0.85rem; overflow-x: auto;
-  }
-  .diagram pre { background: none; color: var(--ink); padding: 0; margin: 0; }
 
   footer.page { max-width: 960px; margin: 0 auto; padding: 20px 24px 60px; color: var(--ink-faint); font-size: 0.85rem; }
 </style>
@@ -139,45 +111,41 @@
 </header>
 
 <main>
-  <h1>詳細設計</h1>
-  <p class="lede">サンドボックス実行の仕組み、API仕様、ディレクトリ構成、フロントエンドの構造をまとめる。長くなってきたためトピックごとにページを分けている。</p>
+  <h1>セキュリティ</h1>
+  <p class="lede">実装済みの対策と、本番運用に向けて未対応の項目。</p>
 
-  <div class="card-grid">
-    <a class="card" href="design-architecture.html">
-      <span class="tag">Architecture</span>
-      <h3>全体構成・ディレクトリ構成</h3>
-      <p>ブラウザ〜フロントエンド〜バックエンドの全体図と、リポジトリのディレクトリ構成。</p>
-    </a>
-    <a class="card" href="design-grading.html">
-      <span class="tag">Grading</span>
-      <h3>採点フロー・サンドボックス</h3>
-      <p>Dockerサンドボックスでの採点フロー、リソース制限の設定と調整の経緯、外部モジュール（Gin/GORM等）への対応。</p>
-    </a>
-    <a class="card" href="design-editor.html">
-      <span class="tag">Editor</span>
-      <h3>エディタ機能・学習体験</h3>
-      <p>エラー検知・import自動修正・コード自動保存・進捗バー・連続学習日数（ストリーク）とバッジ。</p>
-    </a>
-    <a class="card" href="design-auth.html">
-      <span class="tag">Auth</span>
-      <h3>認証・進捗の保存</h3>
-      <p>Cookieベースのセッション認証と、学習進捗・自動保存データのテーブル設計。</p>
-    </a>
-    <a class="card" href="design-api.html">
-      <span class="tag">API</span>
-      <h3>API仕様</h3>
-      <p>全エンドポイントのリクエスト/レスポンス形式一覧。</p>
-    </a>
-    <a class="card" href="design-frontend.html">
-      <span class="tag">Frontend</span>
-      <h3>フロントエンド構成</h3>
-      <p>Next.jsのページ・コンポーネント・libの一覧と役割。</p>
-    </a>
-    <a class="card" href="design-security.html">
-      <span class="tag">Security</span>
-      <h3>セキュリティ</h3>
-      <p>実装済みの対策と、本番運用に向けて未対応の項目。</p>
-    </a>
+  <nav class="subnav">
+    <a href="design.html">詳細設計トップ</a>
+    <a href="design-architecture.html">全体構成</a>
+    <a href="design-grading.html">採点フロー</a>
+    <a href="design-editor.html">エディタ・学習体験</a>
+    <a href="design-auth.html">認証・進捗</a>
+    <a href="design-api.html">API仕様</a>
+    <a href="design-frontend.html">フロントエンド構成</a>
+    <a href="design-security.html" class="active">セキュリティ</a>
+  </nav>
+
+  <h2>セキュリティ上の考慮事項</h2>
+  <ul>
+    <li>問題IDは許可リスト経由でのみディレクトリに解決（パストラバーサル対策）</li>
+    <li>採点用テスト（<code>solution_test.go</code>）はサーバー側のみで扱い、クライアントに返さない</li>
+    <li>サンドボックスはネットワーク遮断・リソース制限・非root実行・使い捨てコンテナで隔離</li>
+    <li>Go側の <code>context</code> タイムアウトと、コンテナ名指定による強制削除の二重でハングを防止</li>
+    <li>採点結果の出力は一定サイズで切り詰め、肥大化したログの返却を防止</li>
+    <li>パスワードはbcrypt（<code>DefaultCost</code>）でハッシュ化して保存し、平文は一切保持しない</li>
+    <li>セッショントークンは <code>crypto/rand</code> による32バイトの乱数。HttpOnly Cookieで発行し、JavaScriptからは読めない</li>
+    <li>ログイン失敗は「ユーザーが存在しない」「パスワードが違う」を区別せず一律 <code>401</code>。存在しないユーザーでもダミーハッシュとの照合を行い、応答時間からの推測も防いでいる</li>
+    <li>期限切れセッションは参照時に検出して削除する</li>
+  </ul>
+
+  <div class="callout warn">
+    <strong>本番運用に向けて未対応の項目</strong>
+    <p style="margin:0">
+      現状はローカル開発向けの構成のため、公開前に少なくとも次の対応が必要:
+      HTTPS化と <code>SECURE_COOKIE=true</code> の設定、CSRF対策（現在はCookie + <code>SameSite=Lax</code> のみ）、
+      ログイン試行のレート制限、同時採点数の制御（現在はリクエストごとに無制限にコンテナを起動する）、
+      アプリDBのSQLiteからPostgreSQL等への移行検討。
+    </p>
   </div>
 </main>
 

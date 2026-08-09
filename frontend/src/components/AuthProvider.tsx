@@ -18,15 +18,21 @@ import {
 } from "@/lib/api";
 import {
   getCompletedLessonsSnapshot,
+  getPassedAtSnapshot,
   markLessonCompleted as markLocal,
   subscribeToProgress,
 } from "@/lib/progress";
+import { computeStreakDays } from "@/lib/streak";
 
 type AuthContextValue = {
   user: User | null;
   loading: boolean;
   /** 合格済みレッスンID。ログイン中はサーバー、未ログインはlocalStorageが情報源。 */
   completed: ReadonlySet<string>;
+  /** 問題ID -> 合格日時（ISO文字列）。 */
+  passedAt: ReadonlyMap<string, string>;
+  /** 現在の連続学習日数。 */
+  streakDays: number;
   signUp: (email: string, password: string) => Promise<void>;
   logIn: (email: string, password: string) => Promise<void>;
   logOut: () => Promise<void>;
@@ -53,20 +59,33 @@ export default function AuthProvider({
   const [serverCompleted, setServerCompleted] = useState<Set<string> | null>(
     null,
   );
+  const [serverPassedAt, setServerPassedAt] = useState<Map<
+    string,
+    string
+  > | null>(null);
   // localStorage側の進捗は外部ストアなので、変更を購読して再描画する
   const [localCompleted, setLocalCompleted] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
+  const [localPassedAt, setLocalPassedAt] = useState<
+    ReadonlyMap<string, string>
+  >(() => new Map());
 
   useEffect(() => {
-    const sync = () => setLocalCompleted(getCompletedLessonsSnapshot());
+    const sync = () => {
+      setLocalCompleted(getCompletedLessonsSnapshot());
+      setLocalPassedAt(getPassedAtSnapshot());
+    };
     sync();
     return subscribeToProgress(sync);
   }, []);
 
   const loadServerProgress = useCallback(async () => {
-    const ids = await getServerProgress();
-    setServerCompleted(ids ? new Set(ids) : null);
+    const progress = await getServerProgress();
+    setServerCompleted(progress ? new Set(progress.completedIds) : null);
+    setServerPassedAt(
+      progress ? new Map(Object.entries(progress.passedAt)) : null,
+    );
   }, []);
 
   useEffect(() => {
@@ -115,6 +134,7 @@ export default function AuthProvider({
     await apiLogOut();
     setUser(null);
     setServerCompleted(null);
+    setServerPassedAt(null);
   }, []);
 
   const markCompleted = useCallback(
@@ -123,9 +143,17 @@ export default function AuthProvider({
       // ログイン中はサーバー側にも submit のレスポンス経路で記録済み。
       markLocal(lessonId);
       if (user) {
+        const now = new Date().toISOString();
         setServerCompleted((prev) => {
           const next = new Set(prev ?? []);
           next.add(lessonId);
+          return next;
+        });
+        setServerPassedAt((prev) => {
+          const next = new Map(prev ?? []);
+          if (!next.has(lessonId)) {
+            next.set(lessonId, now);
+          }
           return next;
         });
       }
@@ -138,9 +166,39 @@ export default function AuthProvider({
     [user, serverCompleted, localCompleted],
   );
 
+  const passedAt = useMemo<ReadonlyMap<string, string>>(
+    () => (user && serverPassedAt ? serverPassedAt : localPassedAt),
+    [user, serverPassedAt, localPassedAt],
+  );
+
+  const streakDays = useMemo(
+    () => computeStreakDays(passedAt.values()),
+    [passedAt],
+  );
+
   const value = useMemo<AuthContextValue>(
-    () => ({ user, loading, completed, signUp, logIn, logOut, markCompleted }),
-    [user, loading, completed, signUp, logIn, logOut, markCompleted],
+    () => ({
+      user,
+      loading,
+      completed,
+      passedAt,
+      streakDays,
+      signUp,
+      logIn,
+      logOut,
+      markCompleted,
+    }),
+    [
+      user,
+      loading,
+      completed,
+      passedAt,
+      streakDays,
+      signUp,
+      logIn,
+      logOut,
+      markCompleted,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

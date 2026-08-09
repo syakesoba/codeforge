@@ -13,6 +13,7 @@ import (
 
 	"github.com/syakesoba/codeforge/internal/auth"
 	"github.com/syakesoba/codeforge/internal/judge"
+	"github.com/syakesoba/codeforge/internal/lint"
 	"github.com/syakesoba/codeforge/internal/problems"
 	"github.com/syakesoba/codeforge/internal/store"
 )
@@ -34,6 +35,18 @@ type problemResponse struct {
 }
 
 type answerResponse struct {
+	Code string `json:"code"`
+}
+
+type checkResponse struct {
+	Diagnostics []lint.Diagnostic `json:"diagnostics"`
+}
+
+type formatRequest struct {
+	Code string `json:"code"`
+}
+
+type formatResponse struct {
 	Code string `json:"code"`
 }
 
@@ -59,6 +72,10 @@ func main() {
 	mux.HandleFunc("GET /api/problems/{id}", getProblemHandler())
 	mux.HandleFunc("GET /api/problems/{id}/answer", getAnswerHandler())
 	mux.HandleFunc("POST /api/problems/{id}/submit", submitHandler(runner, authSvc, st))
+	mux.HandleFunc("POST /api/problems/{id}/check", checkHandler())
+	mux.HandleFunc("POST /api/problems/{id}/format", formatHandler())
+	mux.HandleFunc("GET /api/problems/{id}/draft", getDraftHandler(authSvc, st))
+	mux.HandleFunc("POST /api/problems/{id}/draft", saveDraftHandler(authSvc, st))
 
 	mux.HandleFunc("POST /api/auth/signup", signUpHandler(authSvc, secureCookie))
 	mux.HandleFunc("POST /api/auth/login", logInHandler(authSvc, secureCookie))
@@ -155,6 +172,101 @@ func getAnswerHandler() http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(answerResponse{Code: stripBuildIgnoreTag(string(answer))}); err != nil {
+			log.Printf("failed to encode response: %v", err)
+		}
+	}
+}
+
+// checkTimeout はエディタからの入力に対するチェックなので、採点(submit)より
+// 大幅に短く設定する。go build はコンパイルのみで通常は1秒未満で終わる。
+const checkTimeout = 10 * time.Second
+
+func checkHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		problem, ok := problems.Get(id)
+		if !ok {
+			http.Error(w, "problem not found", http.StatusNotFound)
+			return
+		}
+
+		var req submitRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		goMod, err := problem.ReadGoMod(problemsBaseDir)
+		if err != nil {
+			log.Printf("failed to read go.mod: %v", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		goSum, err := problem.ReadGoSum(problemsBaseDir)
+		if err != nil && !os.IsNotExist(err) {
+			log.Printf("failed to read go.sum: %v", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(r.Context(), checkTimeout)
+		defer cancel()
+
+		diagnostics, err := lint.Check(ctx, goMod, goSum, req.Code)
+		if err != nil {
+			log.Printf("check error: %v", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(checkResponse{Diagnostics: diagnostics}); err != nil {
+			log.Printf("failed to encode response: %v", err)
+		}
+	}
+}
+
+func formatHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		problem, ok := problems.Get(id)
+		if !ok {
+			http.Error(w, "problem not found", http.StatusNotFound)
+			return
+		}
+
+		var req formatRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		goMod, err := problem.ReadGoMod(problemsBaseDir)
+		if err != nil {
+			log.Printf("failed to read go.mod: %v", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		goSum, err := problem.ReadGoSum(problemsBaseDir)
+		if err != nil && !os.IsNotExist(err) {
+			log.Printf("failed to read go.sum: %v", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(r.Context(), checkTimeout)
+		defer cancel()
+
+		formatted, err := lint.FixImports(ctx, goMod, goSum, req.Code)
+		if err != nil {
+			// 構文エラーがあるとgoimportsは整形できない。ユーザーへの
+			// エラーメッセージとしてそのまま返す。
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(formatResponse{Code: formatted}); err != nil {
 			log.Printf("failed to encode response: %v", err)
 		}
 	}

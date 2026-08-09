@@ -6,8 +6,6 @@
 - `RowsAffected()` で「実際に何行変わったか」を確認する方法
 - 「対象が存在しなかった」ことをエラーとして扱う書き方
 
-## 解説
-
 ### UPDATE / DELETE も db.Exec
 
 Lesson 2の `INSERT` と同じく、`UPDATE` と `DELETE` も結果の行を返さないので `db.Exec` で実行します。

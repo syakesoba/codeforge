@@ -1,0 +1,224 @@
+<title>CodeForge ドキュメント ― 詳細設計: 全体構成・ディレクトリ構成</title>
+<style>
+  :root {
+    --bg: #f7f8f5;
+    --surface: #ffffff;
+    --surface-2: #eef2ec;
+    --ink: #14201a;
+    --ink-soft: #4b5b52;
+    --ink-faint: #8a988e;
+    --accent: #059669;
+    --accent-strong: #047857;
+    --accent-soft-bg: #d1fae5;
+    --line: #dde5da;
+    --amber: #b45309;
+    --amber-soft-bg: #fef3c7;
+    --code-bg: #14201a;
+    --code-ink: #e7ece7;
+    --shadow: 0 1px 2px rgba(20, 32, 26, 0.04), 0 8px 24px rgba(20, 32, 26, 0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1512; --surface: #16201b; --surface-2: #1c2721;
+      --ink: #e7ece7; --ink-soft: #a9b8ad; --ink-faint: #6b7a70;
+      --accent: #34d399; --accent-strong: #6ee7b7; --accent-soft-bg: #064e3b;
+      --line: #26332c; --amber: #fbbf24; --amber-soft-bg: #451a03;
+      --code-bg: #0b100d; --code-ink: #d7ded8;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1512; --surface: #16201b; --surface-2: #1c2721;
+    --ink: #e7ece7; --ink-soft: #a9b8ad; --ink-faint: #6b7a70;
+    --accent: #34d399; --accent-strong: #6ee7b7; --accent-soft-bg: #064e3b;
+    --line: #26332c; --amber: #fbbf24; --amber-soft-bg: #451a03;
+    --code-bg: #0b100d; --code-ink: #d7ded8;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+  :root[data-theme="light"] {
+    --bg: #f7f8f5; --surface: #ffffff; --surface-2: #eef2ec;
+    --ink: #14201a; --ink-soft: #4b5b52; --ink-faint: #8a988e;
+    --accent: #059669; --accent-strong: #047857; --accent-soft-bg: #d1fae5;
+    --line: #dde5da; --amber: #b45309; --amber-soft-bg: #fef3c7;
+    --code-bg: #14201a; --code-ink: #e7ece7;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+    line-height: 1.7;
+  }
+  header.top {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--surface); border-bottom: 1px solid var(--line); box-shadow: var(--shadow);
+  }
+  .top-inner {
+    max-width: 960px; margin: 0 auto; padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  }
+  .brand { font-weight: 800; font-size: 1.1rem; letter-spacing: -0.01em; }
+  .brand span { color: var(--accent-strong); }
+  nav.tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+  nav.tabs a {
+    text-decoration: none; color: var(--ink-soft); font-size: 0.9rem;
+    padding: 6px 12px; border-radius: 999px; border: 1px solid transparent;
+  }
+  nav.tabs a:hover { background: var(--surface-2); color: var(--ink); }
+  nav.tabs a.active { background: var(--accent-soft-bg); color: var(--accent-strong); font-weight: 700; }
+
+  nav.subnav { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 32px; }
+  nav.subnav a {
+    text-decoration: none; color: var(--ink-soft); font-size: 0.82rem;
+    padding: 5px 12px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line);
+  }
+  nav.subnav a:hover { color: var(--ink); }
+  nav.subnav a.active { background: var(--accent-soft-bg); color: var(--accent-strong); font-weight: 700; border-color: transparent; }
+
+  main { max-width: 960px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 2rem; margin: 0 0 8px; letter-spacing: -0.01em; }
+  h2 { font-size: 1.35rem; margin: 40px 0 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+  h2:first-of-type { border-top: none; padding-top: 0; }
+  h3 { font-size: 1.05rem; margin: 24px 0 8px; color: var(--ink); }
+  p { color: var(--ink-soft); }
+  .lede { font-size: 1.1rem; color: var(--ink-soft); margin-bottom: 20px; }
+
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.88rem; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--ink-faint); font-weight: 700; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; }
+
+  code { background: var(--surface-2); padding: 2px 6px; border-radius: 6px; font-size: 0.88em; }
+  pre {
+    background: var(--code-bg); color: var(--code-ink); padding: 16px 18px; border-radius: 12px;
+    overflow-x: auto; font-size: 0.83rem; line-height: 1.6;
+  }
+  pre code { background: none; padding: 0; color: inherit; }
+
+  .callout {
+    border-radius: 12px; padding: 14px 18px; margin: 18px 0; font-size: 0.92rem;
+    background: var(--surface-2); border: 1px solid var(--line);
+  }
+  .callout.note { background: var(--accent-soft-bg); border-color: transparent; }
+  .callout.warn { background: var(--amber-soft-bg); border-color: transparent; }
+  .callout strong { display: block; margin-bottom: 4px; }
+
+  ul, ol { color: var(--ink-soft); }
+  li { margin-bottom: 4px; }
+
+  .diagram {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+    padding: 20px; box-shadow: var(--shadow); font-size: 0.85rem; overflow-x: auto;
+  }
+  .diagram pre { background: none; color: var(--ink); padding: 0; margin: 0; }
+
+  footer.page { max-width: 960px; margin: 0 auto; padding: 20px 24px 60px; color: var(--ink-faint); font-size: 0.85rem; }
+</style>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">Code<span>Forge</span> Docs</div>
+    <nav class="tabs">
+      <a href="index.html">概要</a>
+      <a href="requirements.html">要件定義</a>
+      <a href="plan.html">実装プラン</a>
+      <a href="design.html" class="active">詳細設計</a>
+      <a href="setup.html">起動方法</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <h1>全体構成・ディレクトリ構成</h1>
+  <p class="lede">ブラウザ〜フロントエンド〜バックエンドの全体図と、リポジトリのディレクトリ構成。</p>
+
+  <nav class="subnav">
+    <a href="design.html">詳細設計トップ</a>
+    <a href="design-architecture.html" class="active">全体構成</a>
+    <a href="design-grading.html">採点フロー</a>
+    <a href="design-editor.html">エディタ・学習体験</a>
+    <a href="design-auth.html">認証・進捗</a>
+    <a href="design-api.html">API仕様</a>
+    <a href="design-frontend.html">フロントエンド構成</a>
+    <a href="design-security.html">セキュリティ</a>
+  </nav>
+
+  <h2>全体構成</h2>
+  <div class="diagram">
+<pre>
+[ブラウザ]
+   │  GET /lessons/[id]  (SSRでバックエンドから問題データ取得)
+   │  POST 採点リクエスト (クライアントから直接、CORS経由・Cookie付き)
+   ▼
+[Next.js frontend :3000]
+   │  fetch (NEXT_PUBLIC_API_BASE_URL, credentials: include)
+   ▼
+[Go backend :8080]  cmd/server/main.go
+   │  GET  /api/problems/{id}          問題文・雛形コードを返す
+   │  GET  /api/problems/{id}/answer   模範解答を返す
+   │  POST /api/problems/{id}/submit   ユーザーコードを採点する（Docker）
+   │  POST /api/problems/{id}/check    コンパイルエラーを検知する（ホスト直接実行）
+   │  POST /api/problems/{id}/format   import自動修正・gofmt整形（ホスト直接実行）
+   │  POST /api/auth/signup|login|logout
+   │  GET  /api/me, /api/progress      認証状態・学習進捗
+   ├───────────────┬─────────────────┐
+   ▼                                    ▼                                    ▼
+[internal/judge]                   [internal/lint]                     [internal/auth] → [internal/store]
+   │  一時ワークスペース作成            一時ワークスペース作成               セッション検証     SQLite
+   │  → docker run → 結果パース         → go build のみ実行（サンドボックス不要） 合格時に進捗を記録  (data/codeforge.db)
+   ▼
+[Docker: codeforge-judge イメージ]
+   go test -vet=off -json ./...  を実行し、結果を標準出力(JSON)で返す
+</pre>
+  </div>
+
+  <h2>ディレクトリ構成</h2>
+  <pre><code>go_study/                          (リポジトリルート, module github.com/syakesoba/codeforge)
+  go.mod
+  cmd/server/
+    main.go                        HTTPサーバーのエントリポイント・問題/採点エンドポイント
+    authhandlers.go                サインアップ/ログイン/ログアウト/me/progress
+    drafthandlers.go               コード自動保存の取得/保存
+  internal/judge/
+    judge.go                       サンドボックス実行のオーケストレーション
+    docker.go                      docker run 呼び出し（exec.CommandContext）
+    result.go                      `go test -json` 出力の整形（表示用）
+  internal/lint/
+    lint.go                        go build のみを実行するエディタ向けエラー検知（/check）
+    format.go                      goimports相当のimport自動修正（/format）
+  internal/problems/
+    problems.go                    problemID -> ディレクトリ の許可リスト・ロード処理
+  internal/auth/
+    auth.go                        サインアップ・ログイン・セッション管理（bcrypt）
+  internal/store/
+    store.go                       SQLite（users / sessions / progress / code_drafts）
+  problems/
+    concurrency/                   Course 1: ゴルーチン・並行処理（6レッスン）
+    web-api-basics/                Course 2: Web APIの基礎（6レッスン）
+    gin-api/                       Course 3: フレームワークで作るAPI（5レッスン）
+    database/                      Course 4: データベース連携（5レッスン）
+    auth-jwt/                      Course 5: 認証・JWT（5レッスン）
+      05-capstone-login-api/       ← 各レッスンは以下の5ファイルで構成
+        problem.md                 スライドの元になる説明文（Markdown）
+        starter.go                 ユーザーに見せる雛形コード
+        answer.go                  模範解答（`//go:build ignore`でビルド対象外）
+        solution_test.go           非公開の採点用テスト（クライアントには渡さない）
+        go.mod / go.sum            採点ワークスペースに配置する依存定義
+  judge-image/
+    Dockerfile                     採点用サンドボックスイメージ
+    priming/                       Gin/GORM/SQLite/JWTのキャッシュを焼き込むための捨てモジュール
+  data/codeforge.db                アプリのSQLite（.gitignore対象。初回起動時に自動生成）
+  frontend/                        Next.js（App Router, TypeScript, Tailwind CSS v4）
+    src/app/page.tsx               トップページ（コース・レッスン一覧）
+    src/app/login|signup/page.tsx  ログイン・新規登録ページ
+    src/app/lessons/[id]/page.tsx  レッスンページ（サーバーコンポーネント）
+    src/components/                詳細は「フロントエンド構成」ページ参照
+    src/lib/                       詳細は「フロントエンド構成」ページ参照
+  docs/
+    requirements.md                初期要件メモ
+    codeforge/                     このドキュメント一式
+</code></pre>
+</main>
+
+<footer class="page">
+  このドキュメントはCodeForgeの機能追加に合わせて更新されます。
+</footer>
