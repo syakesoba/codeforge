@@ -158,7 +158,7 @@
   </div>
   <ul>
     <li><code>POST /api/problems/{id}/check</code>: レッスンの <code>go.mod</code>/<code>go.sum</code> と提出コードを一時ワークスペースに配置し、<code>go build ./...</code> を実行。標準エラー出力を <code>{file}:{line}:{col}: {message}</code> でパースし、<code>{"diagnostics": [{"line", "column", "message"}, ...]}</code> を返す。隠しテストは含めない</li>
-    <li><code>POST /api/problems/{id}/format</code>: <code>golang.org/x/tools/imports</code>（goimportsの実体）で未使用importの削除・不足importの追加・gofmt整形を行い、<code>{"code": "整形後のコード"}</code> を返す</li>
+    <li><code>POST /api/problems/{id}/format</code>: <code>golang.org/x/tools/imports</code>（goimportsの実体）で未使用importの削除・不足importの追加・gofmt整形を行い、<code>{"code": "整形後のコード"}</code> を返す。任意で<code>hints</code>（後述）を受け付ける</li>
   </ul>
   <div class="callout warn">
     <strong>goimportsが解決できないパッケージへのフォールバック</strong>
@@ -172,7 +172,32 @@
       レッスンの <code>go.mod</code> の <code>require</code> 一覧を <code>golang.org/x/mod/modfile</code> でパースし、
       importパスの末尾要素が <code>X</code> と一致するものを <code>golang.org/x/tools/go/ast/astutil.AddImport</code> で
       直接注入するフォールバックを追加している（<code>internal/lint/format.go</code> の <code>fillKnownImports</code>）。
+      このフォールバックは残存エラーの検証に <code>go build</code> を1回実行する。
     </p>
+  </div>
+
+  <div class="callout warn">
+    <strong>hints: /formatを高速化するヒント引き渡し</strong>
+    <p style="margin:0 0 8px">
+      上記の <code>fillKnownImports</code> は正しく動くが、検証のたびに <code>go build</code> を実行するため、
+      Gin/GORM系レッスンでは1〜8秒程度（キャッシュ状況次第でばらつく）かかっていた。
+      一方、エディタは<strong>直前の<code>/check</code>で既にどの識別子が未解決か把握している</strong>
+      （<code>LessonWorkspace.tsx</code>の<code>unresolvedImports</code>）。この情報を<code>/format</code>の
+      リクエストボディに <code>{"code": "...", "hints": ["gorm", "sqlite"]}</code> として渡すと、
+      <code>go build</code>による再検証を丸ごとスキップし、<code>go.mod</code>から直接解決する
+      （<code>internal/lint/format.go</code>の<code>injectHintedImports</code>）。
+    </p>
+    <p style="margin:0 0 8px">
+      さらに、hints解決分のimportは<code>imports.Process</code>を呼ぶ<strong>前に</strong>ASTへ直接注入している。
+      先に注入してしまえば、<code>imports.Process</code>は「未知の識別子を探して失敗する」という
+      一番コストの高い処理をしなくて済み、stdlibの解決と最終整形だけを1回で済ませられる
+      （hints無しの場合は素直に<code>imports.Process</code>を1回呼ぶだけ）。
+    </p>
+    <p style="margin:0">
+      実測では、GORM/SQLite未解決のケースで <strong>1.3〜8.4秒 → 常に0.3〜0.4秒程度</strong>まで短縮し、
+      かつ<code>go build</code>特有の実行時間のばらつきも無くなった。<code>hints</code>を渡さない場合は
+      従来通り<code>fillKnownImports</code>（<code>go build</code>による検証）にフォールバックするため、
+      後方互換性は保たれている。</p>
   </div>
 
   <h2>フロントエンドのlint統合</h2>
@@ -183,8 +208,10 @@
   </p>
   <ul>
     <li>応答が届く前に入力がさらに進んでいた場合は、送信時点のソースと現在のソースを比較して古い結果を破棄する（連番やrefは使わず、ドキュメント内容そのものを比較することで実現）</li>
-    <li>メッセージが <code>undefined: </code> で始まる診断には、VSCodeのクイックフィックスに相当する <code>actions</code>（「インポートを自動修正」）を付与する。押すと <code>/format</code> を呼び、返ってきたコードでエディタ全体を置き換える</li>
-    <li>常設の「フォーマット」ボタンからも、いつでも明示的に同じ処理を呼び出せる</li>
+    <li><code>/check</code>の診断から<code>undefined: X</code>の識別子一覧を<code>unresolvedImports</code>として状態管理し、エディタ下に常設の案内バー（「未解決のimportがあります」＋「インポートを自動修正」ボタン）を表示する。<code>/format</code>呼び出し時はこの一覧を<code>hints</code>として渡す</li>
+    <li>メッセージが <code>undefined: </code> で始まる診断には、VSCodeのクイックフィックスに相当する <code>actions</code>（「インポートを自動修正」）も付与している。押すと同じく<code>hints</code>付きで<code>/format</code>を呼び、返ってきたコードでエディタ全体を置き換える。ただしCodeMirrorの診断ホバーは発見しにくいため、上記の常設バーが主な導線になっている</li>
+    <li>常設の「フォーマット」ボタンからも、<code>unresolvedImports</code>をhintsとして渡しつつ、いつでも明示的に同じ処理を呼び出せる</li>
+    <li>エディタのインデント単位は<code>@codemirror/language</code>の<code>indentUnit.of("\t")</code>でタブに設定している。未設定だとCodeMirrorのデフォルト（スペース2つ）が使われ、gofmt準拠のタブインデントと改行後の字下げが視覚的に揃わなくなる</li>
   </ul>
 
   <h2>学習体験の向上（コード自動保存・進捗バー・ストリーク/バッジ）</h2>

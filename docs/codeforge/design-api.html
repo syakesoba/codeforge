@@ -93,6 +93,13 @@
   ul, ol { color: var(--ink-soft); }
   li { margin-bottom: 4px; }
 
+  .callout {
+    border-radius: 12px; padding: 14px 18px; margin: 18px 0; font-size: 0.92rem;
+    background: var(--surface-2); border: 1px solid var(--line);
+  }
+  .callout.warn { background: var(--amber-soft-bg); border-color: transparent; }
+  .callout strong { display: block; margin-bottom: 4px; }
+
   footer.page { max-width: 960px; margin: 0 auto; padding: 20px 24px 60px; color: var(--ink-faint); font-size: 0.85rem; }
 </style>
 
@@ -124,6 +131,16 @@
     <a href="design-security.html">セキュリティ</a>
   </nav>
 
+  <div class="callout warn">
+    <strong>状態変更を伴うエンドポイントはCSRFトークンが必須</strong>
+    <p style="margin:0">
+      <code>POST /api/auth/signup|login|logout</code>、<code>POST /api/problems/{id}/submit</code>、<code>POST /api/problems/{id}/draft</code> は、
+      <code>csrf_token</code> Cookieの値と一致する <code>X-CSRF-Token</code> ヘッダーが無いと <code>403</code> を返す。
+      トークンは任意のリクエストのレスポンスでCookieとして自動発行される。詳細は
+      <a href="design-security.html">セキュリティ</a> ページを参照。
+    </p>
+  </div>
+
   <h2>GET /api/problems/{id}</h2>
   <pre><code>{
   "id": "web-api-basics-01",
@@ -138,7 +155,7 @@
   <pre><code>{ "code": "package main\n..." }</code></pre>
 
   <h2>POST /api/problems/{id}/submit</h2>
-  <p>リクエスト:</p>
+  <p><strong>CSRFトークン必須</strong>（<code>X-CSRF-Token</code>ヘッダー）。リクエスト:</p>
   <pre><code>{ "code": "package main\n..." }</code></pre>
   <p>レスポンス:</p>
   <pre><code>{
@@ -147,6 +164,7 @@
   "durationMs": 1951
 }</code></pre>
   <p>タイムアウト時は <code>"passed": false</code> と <code>"error": "timeout"</code> が付与される。</p>
+  <p>同時採点数が上限（3）に達している間はキューで待機し、待機中にタイムアウトした場合は <code>"error": "queue_timeout"</code> が付与される。</p>
   <p>有効なセッションCookieが付いていて合格した場合は、あわせて進捗が記録される。</p>
 
   <h2>POST /api/problems/{id}/check</h2>
@@ -172,12 +190,12 @@
   <pre><code>{ "code": "package main\n..." }</code></pre>
 
   <h2>POST /api/problems/{id}/draft</h2>
-  <p>エディタの内容を自動保存する。未ログインは <code>401</code>。</p>
+  <p><strong>CSRFトークン必須</strong>。エディタの内容を自動保存する。未ログインは <code>401</code>。</p>
   <pre><code>{ "code": "package main\n..." }</code></pre>
   <p>成功時は <code>204</code>。</p>
 
   <h2>POST /api/auth/signup</h2>
-  <p>リクエスト: <code>{ "email": "...", "password": "..." }</code></p>
+  <p><strong>CSRFトークン必須</strong>。1分あたり5回/IPを超えると <code>429</code>。リクエスト: <code>{ "email": "...", "password": "..." }</code></p>
   <p>成功時は <code>201</code> で <code>{ "id": 1, "email": "..." }</code> を返し、セッションCookieを発行する。</p>
   <ul>
     <li><code>400</code>: メールアドレスの形式が不正、またはパスワードが8文字未満</li>
@@ -185,11 +203,11 @@
   </ul>
 
   <h2>POST /api/auth/login</h2>
-  <p>リクエスト: <code>{ "email": "...", "password": "..." }</code></p>
+  <p><strong>CSRFトークン必須</strong>。1分あたり10回/IPを超えると <code>429</code>。リクエスト: <code>{ "email": "...", "password": "..." }</code></p>
   <p>成功時は <code>200</code> で <code>{ "id": 1, "email": "..." }</code> を返し、セッションCookieを発行する。失敗は一律 <code>401</code>。</p>
 
   <h2>POST /api/auth/logout</h2>
-  <p>セッションを破棄しCookieを削除する。常に <code>204</code>。</p>
+  <p><strong>CSRFトークン必須</strong>。セッションを破棄しCookieを削除する。常に <code>204</code>。</p>
 
   <h2>GET /api/me</h2>
   <p>ログイン中なら <code>200</code> で <code>{ "id": 1, "email": "..." }</code>、未ログインなら <code>401</code>。</p>
@@ -206,6 +224,7 @@
     環境変数 <code>FRONTEND_ORIGIN</code>（デフォルト <code>http://localhost:3000</code>）で許可オリジンを指定。
     セッションCookieをクロスオリジンでやり取りするため <code>Access-Control-Allow-Credentials: true</code> を返しており、
     フロントエンド側も <code>credentials: "include"</code> を付けてリクエストしている。
+    <code>Access-Control-Allow-Headers</code> には <code>Content-Type</code> に加え、CSRFトークン用の <code>X-CSRF-Token</code> も許可している。
   </p>
 </main>
 

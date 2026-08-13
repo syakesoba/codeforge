@@ -12,11 +12,11 @@ export default function StreakBadges() {
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-black/10 p-5 dark:border-white/10">
+    <div className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50/50 p-5 dark:border-amber-900 dark:bg-amber-950/20">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-neutral-500">学習の記録</p>
+        <p className="text-sm font-semibold text-neutral-500">学習の記録</p>
         {streakDays > 0 && (
-          <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">
+          <span className="text-sm font-bold text-amber-600 dark:text-amber-400">
             🔥 {streakDays}日連続学習中
           </span>
         )}
@@ -28,7 +28,7 @@ export default function StreakBadges() {
             <span
               key={badge.id}
               title={badge.description}
-              className="flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+              className="flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-semibold text-amber-700 shadow-sm dark:bg-neutral-900 dark:text-amber-300"
             >
               <span>{badge.emoji}</span>
               <span>{badge.label}</span>

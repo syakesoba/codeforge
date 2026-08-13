@@ -17,7 +17,10 @@ export default function SiteHeader() {
 
   return (
     <header className="flex items-center justify-between gap-4 border-b border-black/10 px-6 py-3 dark:border-white/10">
-      <Link href="/" className="shrink-0 font-bold">
+      <Link
+        href="/"
+        className="shrink-0 bg-gradient-to-r from-orange-500 to-pink-500 bg-clip-text font-extrabold text-transparent"
+      >
         CodeForge
       </Link>
 
@@ -53,13 +56,13 @@ export default function SiteHeader() {
           <>
             <Link
               href="/login"
-              className="font-semibold text-emerald-700 hover:underline dark:text-emerald-400"
+              className="font-semibold text-orange-600 hover:underline dark:text-orange-400"
             >
               ログイン
             </Link>
             <Link
               href="/signup"
-              className="rounded-full bg-emerald-600 px-4 py-1 font-semibold text-white transition hover:bg-emerald-700"
+              className="rounded-full bg-orange-500 px-4 py-1 font-semibold text-white transition hover:bg-orange-600"
             >
               新規登録
             </Link>

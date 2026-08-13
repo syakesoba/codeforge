@@ -136,15 +136,52 @@
     <li>セッショントークンは <code>crypto/rand</code> による32バイトの乱数。HttpOnly Cookieで発行し、JavaScriptからは読めない</li>
     <li>ログイン失敗は「ユーザーが存在しない」「パスワードが違う」を区別せず一律 <code>401</code>。存在しないユーザーでもダミーハッシュとの照合を行い、応答時間からの推測も防いでいる</li>
     <li>期限切れセッションは参照時に検出して削除する</li>
+    <li>状態変更を伴うエンドポイント（signup/login/logout/submit/draft保存）はCSRFトークンの検証を必須にしている（詳細は下記）</li>
+    <li>ログイン・サインアップはIPアドレス単位でレート制限し、ブルートフォース・スパム登録を防止している（詳細は下記）</li>
+    <li>採点の同時実行数はDockerコンテナ単位で上限を設け、超過分はキューで待機させている（詳細は下記）</li>
+  </ul>
+
+  <h2>CSRF対策（Double Submit Cookie）</h2>
+  <p>
+    セッションCookieは本番（<code>SECURE_COOKIE=true</code>）で <code>SameSite=None</code> になりクロスオリジンでも送信されるため、
+    <code>SameSite</code> 単独ではCSRFを防げない。そこで<strong>Double Submit Cookie方式</strong>を採用している（<code>cmd/server/csrf.go</code>）。
+  </p>
+  <ul>
+    <li>全リクエストに対し、<code>csrf_token</code> という非HttpOnlyのCookieを（無ければ）発行する（<code>ensureCSRFCookie</code>）。JavaScriptから読めるようにする必要があるため、セッションCookieとは異なり <code>HttpOnly</code> は付けない</li>
+    <li>状態変更を伴うハンドラ（<code>POST /api/auth/signup|login|logout</code>、<code>POST /api/problems/{id}/submit</code>、<code>POST /api/problems/{id}/draft</code>）には <code>requireCSRF</code> を適用し、リクエストヘッダー <code>X-CSRF-Token</code> の値がCookieの値と一致することを検証する（<code>crypto/subtle.ConstantTimeCompare</code>で比較）</li>
+    <li><code>/check</code>・<code>/format</code> は永続的な状態変更を伴わない（DBに何も書き込まない）ため、CSRF検証の対象外にしている</li>
+    <li>攻撃者のサイトは同一生成元ポリシーによりこのCookieの値を読めないため、たとえ<code>SameSite=None</code>でCookie自体は自動送信されても、一致するヘッダーを偽造できない</li>
+    <li>フロントエンドは <code>document.cookie</code> から <code>csrf_token</code> を読み取り、状態変更リクエストのヘッダーに付与する（<code>lib/api.ts</code> の <code>getCsrfToken</code>/<code>mutatingHeaders</code>）</li>
+  </ul>
+
+  <h2>ログイン・サインアップのレート制限</h2>
+  <p>
+    <code>internal/ratelimit</code> パッケージが、キー（クライアントIP）ごとに固定ウィンドウ方式でリクエスト回数を制限する、単一プロセス向けのインメモリ実装を提供する。
+  </p>
+  <ul>
+    <li><code>POST /api/auth/login</code>: 1分あたり10回/IP</li>
+    <li><code>POST /api/auth/signup</code>: 1分あたり5回/IP</li>
+    <li>上限を超えると <code>429 Too Many Requests</code> を返す</li>
+    <li>クライアントIPは <code>r.RemoteAddr</code> から取得している。リバースプロキシ配下で運用する場合は、信頼できるプロキシからの <code>X-Forwarded-For</code> 等を参照するよう別途対応が必要</li>
+  </ul>
+
+  <h2>同時採点数の制御（キューイング）</h2>
+  <p>
+    <code>internal/judge</code> にバッファ付きチャネルによるセマフォ（<code>maxConcurrentSubmissions = 3</code>）を追加し、同時に起動するDockerコンテナ数を制限している。
+  </p>
+  <ul>
+    <li>上限に達している間、新しい採点リクエストはチャネルの空きを待つ（＝キューイングされる）</li>
+    <li>待機中にリクエストの<code>context</code>がタイムアウトした場合は、エラーではなく通常のタイムアウトと同じ形の不合格<code>Result</code>（<code>Error: "queue_timeout"</code>）を返し、フロントエンドの表示を変える必要がないようにしている</li>
+    <li>上限値3は、1コンテナあたり<code>--cpus 1.0</code>/<code>--memory 768m</code>を使う前提で、4コア程度の小規模ホストでバックエンド・フロントエンド分の余力を残すことを想定した値。ホストのスペックに応じて調整が必要</li>
   </ul>
 
   <div class="callout warn">
     <strong>本番運用に向けて未対応の項目</strong>
     <p style="margin:0">
       現状はローカル開発向けの構成のため、公開前に少なくとも次の対応が必要:
-      HTTPS化と <code>SECURE_COOKIE=true</code> の設定、CSRF対策（現在はCookie + <code>SameSite=Lax</code> のみ）、
-      ログイン試行のレート制限、同時採点数の制御（現在はリクエストごとに無制限にコンテナを起動する）、
-      アプリDBのSQLiteからPostgreSQL等への移行検討。
+      HTTPS化と <code>SECURE_COOKIE=true</code> の設定、
+      アプリDBのSQLiteからPostgreSQL等への移行検討、
+      リバースプロキシ配下で運用する場合のクライアントIP取得方法の見直し（レート制限用）。
     </p>
   </div>
 </main>

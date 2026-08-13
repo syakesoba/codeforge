@@ -153,18 +153,41 @@
     <li><code>components/ProgressBar.tsx</code>: 合格数/総数を受け取って描画する汎用の進捗バー。ヘッダー・コース一覧・レッスンページの3箇所で共用する</li>
     <li><code>components/StreakBadges.tsx</code>: トップページに表示するストリーク日数とバッジの一覧。<code>lib/badges.ts</code>の<code>computeEarnedBadges</code>で導出する</li>
     <li><code>components/SlideViewer.tsx</code>: クライアントコンポーネント。<code>lib/slides.ts</code> の <code>splitIntoSlides</code> で問題文Markdownを <code>##</code> / <code>###</code> 見出し単位のスライド配列に分割し、前へ/次へボタン・ドットインジケーターでページ送りする（Progateのスライド画面を意識したUI）</li>
+    <li><code>components/Mascot.tsx</code>: CodeForgeのオリジナルSVGマスコット（既存キャラクターを模したものではない独自デザイン）。<code>pose="wave"</code>（トップページ・ログイン/新規登録ページ）と<code>pose="celebrate"</code>（SuccessModal）の2種類</li>
   </ul>
 
   <h2>lib（ロジック・APIクライアント）</h2>
   <ul>
     <li><code>lib/slides.ts</code>: Markdownをスライドに分割するパーサー。フェンス付きコードブロック内の <code>#</code> 始まりの行は見出しとして扱わない</li>
-    <li><code>lib/lessons.ts</code>: コース・レッスンの定義と順序。「次のレッスン」の解決もここが担当する</li>
+    <li><code>lib/lessons.ts</code>: コース・レッスンの定義と順序。「次のレッスン」の解決もここが担当する。各コースに<code>accent</code>（アクセントカラーのキー）を持たせている</li>
+    <li><code>lib/courseColors.ts</code>: コースごとのアクセントカラー（violet/sky/teal/amber/rose）に対応するTailwindクラス名一覧。動的なクラス名組み立てはTailwindのビルド時スキャンで検出されないため、完全な形のクラス名をこのオブジェクトに直接書き出している</li>
     <li><code>lib/streak.ts</code>: 合格日時の配列から連続学習日数を計算する純粋関数</li>
     <li><code>lib/badges.ts</code>: 合格済みレッスンとストリーク日数からバッジ一覧を導出する純粋関数</li>
     <li><code>lib/draft.ts</code>: 未ログイン時のコード自動保存（localStorageのみ）</li>
     <li><code>lib/progress.ts</code>: 未ログイン時の進捗（localStorage）。<code>{ [problemId]: 合格日時ISO }</code> の形式で保持する</li>
-    <li><code>lib/api.ts</code>: <code>NEXT_PUBLIC_API_BASE_URL</code>（デフォルト <code>http://localhost:8080</code>）を参照するAPIクライアント。認証が絡むリクエストには <code>credentials: "include"</code> を付ける</li>
+    <li><code>lib/api.ts</code>: <code>NEXT_PUBLIC_API_BASE_URL</code>（デフォルト <code>http://localhost:8080</code>）を参照するAPIクライアント。認証が絡むリクエストには <code>credentials: "include"</code> を付ける。状態変更を伴うリクエスト（signup/login/logout/submit/draft保存）には、<code>getCsrfToken</code>で<code>document.cookie</code>から読み取ったCSRFトークンを<code>X-CSRF-Token</code>ヘッダーに付与する（<code>mutatingHeaders</code>）</li>
   </ul>
+
+  <h2>デザインテーマ（Progate風のポップな配色）</h2>
+  <p>
+    落ち着いたemerald（緑）単色基調から、Progate/Duolingo系の学習サービスを意識した明るいマルチカラーに刷新した。
+  </p>
+  <ul>
+    <li>ブランド・主要CTA（ヘッダーロゴ、登録・ログインボタン、「実行して採点」ボタン等）: オレンジ（<code>orange-500</code>系）。ロゴ・トップページ見出しは <code>from-orange-500 to-pink-500</code> のグラデーション文字</li>
+    <li>合格・チェックマーク等の「正解」を表す箇所: 引き続きemerald（緑）。CTAの色と意味を分けることで「押すボタン」と「達成状態」を区別している</li>
+    <li>ストリーク・バッジ: amber（黄〜琥珀色）</li>
+    <li>コースごとのアクセントカラー: violet / sky / teal / amber / rose の5色を各コースに割り当て、コース一覧のカード上部・レッスンページのヘッダー上部に使う（<code>lib/courseColors.ts</code>）</li>
+  </ul>
+  <div class="callout warn">
+    <strong>border-t-{色}がborder-{色}に打ち消される問題</strong>
+    <p style="margin:0">
+      コースカードで「上辺だけ色付きボーダー」を実装する際、<code>border border-t-4 border-black/10 ... border-t-violet-500</code>のように
+      全辺色（<code>border-black/10</code>）と上辺色（<code>border-t-violet-500</code>）を併記すると、
+      生成されるCSSの出力順によって全辺色側が勝ち、上辺の色が反映されないことがあった。
+      全辺に共通の<code>border-{色}</code>は使わず、<code>border-x-{色}</code>/<code>border-b-{色}</code>のように
+      上辺以外を辺ごとに明示することで、上辺の色指定と衝突しないようにしている。
+    </p>
+  </div>
 
   <div class="callout warn">
     <strong>react-markdownは生HTMLを描画しない</strong>

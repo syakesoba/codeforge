@@ -13,6 +13,15 @@ import (
 	"github.com/syakesoba/codeforge/internal/problems"
 )
 
+// maxConcurrentSubmissions は同時に起動するDockerコンテナ数の上限です。
+// 1コンテナあたり --cpus 1.0 / --memory 768m を使うため、ホストのCPU/メモリを
+// 考慮して同時実行数を絞る（想定: 4コア程度の小規模ホストでバックエンド・
+// フロントエンド分の余力を残す）。上限を超えた分はチャネルの空きを待つ
+// （＝キューイングされる）。
+const maxConcurrentSubmissions = 3
+
+var submitSemaphore = make(chan struct{}, maxConcurrentSubmissions)
+
 // Result は採点結果です。
 type Result struct {
 	Passed     bool   `json:"passed"`
@@ -40,7 +49,23 @@ func NewRunner() Runner {
 }
 
 // Run はユーザーコードを problem の非公開テストとともにサンドボックス実行します。
+// 同時実行数が上限に達している間はキューで待機し、待機中にctxがタイムアウト
+// した場合はエラーではなく不合格のResultとして返す（フロントエンドの表示を
+// 通常のタイムアウトと同様に扱えるようにするため）。
 func (r Runner) Run(ctx context.Context, problem problems.Problem, code string) (Result, error) {
+	waitStart := time.Now()
+	select {
+	case submitSemaphore <- struct{}{}:
+		defer func() { <-submitSemaphore }()
+	case <-ctx.Done():
+		return Result{
+			Passed:     false,
+			Output:     "採点の混雑によりキューで待機中にタイムアウトしました。しばらくしてからもう一度お試しください。",
+			DurationMs: time.Since(waitStart).Milliseconds(),
+			Error:      "queue_timeout",
+		}, nil
+	}
+
 	goMod, err := problem.ReadGoMod(r.ProblemsBaseDir)
 	if err != nil {
 		return Result{}, err

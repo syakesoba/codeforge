@@ -29,6 +29,32 @@ export type Diagnostic = {
 /** セッションCookieを送受信するため、認証が絡むリクエストには credentials が必要。 */
 const withCredentials: RequestInit = { credentials: "include" };
 
+const CSRF_COOKIE_NAME = "csrf_token";
+const CSRF_HEADER_NAME = "X-CSRF-Token";
+
+/**
+ * バックエンドが発行するCSRFトークンCookieを読み取る。
+ * Double Submit Cookie方式のため、状態変更を伴うリクエストではこの値を
+ * ヘッダーにも載せて送る必要がある（サーバー側の検証: cmd/server/csrf.go）。
+ */
+function getCsrfToken(): string {
+  if (typeof document === "undefined") {
+    return "";
+  }
+  const match = document.cookie.match(
+    new RegExp(`(?:^|; )${CSRF_COOKIE_NAME}=([^;]*)`),
+  );
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
+/** 状態変更を伴うリクエスト共通のヘッダー（Content-Type + CSRFトークン）。 */
+function mutatingHeaders(): HeadersInit {
+  return {
+    "Content-Type": "application/json",
+    [CSRF_HEADER_NAME]: getCsrfToken(),
+  };
+}
+
 async function errorMessage(res: Response, fallback: string): Promise<string> {
   try {
     const data = await res.json();
@@ -65,7 +91,7 @@ export async function submitSolution(
   const res = await fetch(`${API_BASE_URL}/api/problems/${id}/submit`, {
     ...withCredentials,
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: mutatingHeaders(),
     body: JSON.stringify({ code }),
   });
   if (!res.ok) {
@@ -96,12 +122,21 @@ export async function checkCode(
   return data.diagnostics;
 }
 
-/** 不足importの追加・未使用importの削除・gofmt整形を行う（goimports相当）。 */
-export async function formatCode(id: string, code: string): Promise<string> {
+/**
+ * 不足importの追加・未使用importの削除・gofmt整形を行う（goimports相当）。
+ *
+ * hintsに、既に判明している未解決の識別子名（/checkの結果）を渡すと、
+ * サーバー側でgo buildによる再検証を省略できるため応答が速くなる。
+ */
+export async function formatCode(
+  id: string,
+  code: string,
+  hints?: string[],
+): Promise<string> {
   const res = await fetch(`${API_BASE_URL}/api/problems/${id}/format`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ code }),
+    body: JSON.stringify({ code, hints }),
   });
   if (!res.ok) {
     throw new Error(await errorMessage(res, "フォーマットに失敗しました"));
@@ -114,7 +149,7 @@ export async function signUp(email: string, password: string): Promise<User> {
   const res = await fetch(`${API_BASE_URL}/api/auth/signup`, {
     ...withCredentials,
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: mutatingHeaders(),
     body: JSON.stringify({ email, password }),
   });
   if (!res.ok) {
@@ -127,7 +162,7 @@ export async function logIn(email: string, password: string): Promise<User> {
   const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
     ...withCredentials,
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: mutatingHeaders(),
     body: JSON.stringify({ email, password }),
   });
   if (!res.ok) {
@@ -140,6 +175,7 @@ export async function logOut(): Promise<void> {
   await fetch(`${API_BASE_URL}/api/auth/logout`, {
     ...withCredentials,
     method: "POST",
+    headers: { [CSRF_HEADER_NAME]: getCsrfToken() },
   });
 }
 
@@ -193,7 +229,7 @@ export async function saveDraft(id: string, code: string): Promise<void> {
   const res = await fetch(`${API_BASE_URL}/api/problems/${id}/draft`, {
     ...withCredentials,
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: mutatingHeaders(),
     body: JSON.stringify({ code }),
   });
   if (!res.ok && res.status !== 401) {
