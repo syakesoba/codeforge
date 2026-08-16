@@ -126,7 +126,7 @@
 
 <main>
   <h1>実装プラン</h1>
-  <p class="lede">コアの技術リスク（サンドボックス実行＋自動採点）をLesson 1本で検証してから、動く土台の上に残りのレッスンを量産する方針で進めた。現在は全5コース27レッスンとユーザー認証まで実装済み。</p>
+  <p class="lede">コアの技術リスク（サンドボックス実行＋自動採点）をLesson 1本で検証してから、動く土台の上に残りのレッスンを量産する方針で進めた。現在は全9コース47レッスンとユーザー認証まで実装済み。</p>
 
   <h2>進行状況</h2>
   <ul class="timeline">
@@ -134,9 +134,11 @@
     <li><span class="status-badge status-done">完了</span> Next.jsフロントエンドからAPIを呼び出し、レッスンが一気通貫で動作</li>
     <li><span class="status-badge status-done">完了</span> スライド形式の解説UI・答えを見る機能・合格ポップアップ・進捗チェックマーク</li>
     <li><span class="status-badge status-done">完了</span> 外部依存（Gin/GORM/SQLite/JWT）を使うレッスン向けの判定イメージ拡張</li>
-    <li><span class="status-badge status-done">完了</span> 全5コース27レッスンのコンテンツ</li>
+    <li><span class="status-badge status-done">完了</span> 全5コース27レッスンのコンテンツ、続けてCourse 6〜9（テストの書き方・エラーハンドリング・実践的なアーキテクチャ・デプロイ/Docker化）各5レッスンを追加</li>
     <li><span class="status-badge status-done">完了</span> ユーザー認証（Cookieセッション）と進捗のサーバー保存</li>
-    <li><span class="status-badge status-next">次</span> デザインのブラッシュアップ（キャラクター・バッジ等のゲーミフィケーション）、本番デプロイ</li>
+    <li><span class="status-badge status-done">完了</span> エディタのimportクイックフィックス・コンパイルエラー検知（<code>/check</code>・<code>/format</code>）</li>
+    <li><span class="status-badge status-done">完了</span> CSRF対策・レート制限・採点キューイング、Progate風デザインへの刷新</li>
+    <li><span class="status-badge status-next">次</span> 本番デプロイ（新コース追加は完了）</li>
   </ul>
 
   <h2>コース構成（Go応用編）</h2>
@@ -168,11 +170,33 @@
       <td>bcryptによるパスワードハッシュ化、JWT発行/検証、認証ミドルウェアでのAPI保護</td>
       <td><span class="status-badge status-done">全5レッスン</span></td>
     </tr>
+    <tr>
+      <td>6</td><td>テストの書き方</td>
+      <td>テーブル駆動テスト、サブテスト、インターフェースによるモック、エラーケースのテスト、<code>httptest</code>でのハンドラーテスト</td>
+      <td><span class="status-badge status-done">全5レッスン</span></td>
+    </tr>
+    <tr>
+      <td>7</td><td>エラーハンドリング</td>
+      <td>カスタムエラー型、<code>fmt.Errorf</code>によるラップ、<code>errors.Is</code>/<code>errors.As</code>、<code>errors.Join</code></td>
+      <td><span class="status-badge status-done">全5レッスン</span></td>
+    </tr>
+    <tr>
+      <td>8</td><td>実践的なアーキテクチャ</td>
+      <td>インターフェースによるDI、リポジトリパターン、サービス層、関数オプションパターン</td>
+      <td><span class="status-badge status-done">全5レッスン</span></td>
+    </tr>
+    <tr>
+      <td>9</td><td>デプロイ・Docker化</td>
+      <td>環境変数設定、ヘルスチェック、グレースフルシャットダウン、構造化ロギング、Dockerfileの基本</td>
+      <td><span class="status-badge status-done">全5レッスン</span></td>
+    </tr>
   </table>
 
   <p>
     当初は6コース目として「総合演習」を置く構想だったが、各コースの最終レッスンを
     「道場」（そのコースの内容を統合するまとめ問題）とする形に変えたため、独立したコースとしては設けていない。
+    その後、要件定義時点では未定だった「新コース追加」枠として Course 6「テストの書き方」・Course 7「エラーハンドリング」・
+    Course 8「実践的なアーキテクチャ」・Course 9「デプロイ・Docker化」の4コースを追加し、これで新コース追加は完了した。
   </p>
 
   <h2>各コースのレッスン一覧</h2>
@@ -216,6 +240,51 @@
     <tr><td>3</td><td>JWTを検証する</td><td><code>jwt.Parse</code>＋署名アルゴリズムの確認</td></tr>
     <tr><td>4</td><td>認証ミドルウェアでAPIを保護する</td><td>Bearerトークンを検証するミドルウェア</td></tr>
     <tr><td>5（道場）</td><td>ログインAPIを作ろう</td><td>register/login/profile の3エンドポイント</td></tr>
+  </table>
+
+  <h3>Course 6: テストの書き方</h3>
+  <p>
+    他コースと異なり、学習者は実装コードではなく<strong>テストコード自体</strong>を書く。採点も
+    「正しい実装では合格し、バグを仕込んだ実装では不合格になる」ことを検証する2段階のミューテーションテスト方式（<code>WritesTest</code>）。
+    詳細は<a href="design-grading.html">採点フロー</a>を参照。
+  </p>
+  <table>
+    <tr><th>#</th><th>レッスン</th><th>演習（採点対象）</th></tr>
+    <tr><td>1</td><td>テーブル駆動テストを書く</td><td>スコア判定関数に対するテーブル駆動テストを実装</td></tr>
+    <tr><td>2</td><td>サブテストを使いこなす</td><td><code>t.Run</code>で名前付きサブテストを実装（動的な名前生成含む）</td></tr>
+    <tr><td>3</td><td>インターフェースでモックする</td><td><code>Clock</code>インターフェースのフェイク実装でテスト</td></tr>
+    <tr><td>4</td><td>エラーケースをテストする</td><td><code>errors.Is</code>でセンチネルエラーを検証</td></tr>
+    <tr><td>5（道場）</td><td>HTTPハンドラーをテストする</td><td><code>httptest</code>でハンドラーの正常系・異常系を検証</td></tr>
+  </table>
+
+  <h3>Course 7: エラーハンドリング</h3>
+  <table>
+    <tr><th>#</th><th>レッスン</th><th>演習（採点対象）</th></tr>
+    <tr><td>1</td><td>カスタムエラー型を定義する</td><td><code>error</code>インターフェースを満たす<code>ValidationError</code>型を実装</td></tr>
+    <tr><td>2</td><td>エラーをラップする</td><td><code>fmt.Errorf</code>の<code>%w</code>でセンチネルエラーをラップ</td></tr>
+    <tr><td>3</td><td>errors.Is / errors.As で判定する</td><td>ラップされたエラーを種類ごとにメッセージへ変換</td></tr>
+    <tr><td>4</td><td>複数のエラーをまとめる</td><td><code>errors.Join</code>でフォーム検証エラーを集約</td></tr>
+    <tr><td>5（道場）</td><td>実践的なエラーハンドリング</td><td>カスタム型・ラップ・Is/Asを組み合わせた注文処理のエラーメッセージ変換</td></tr>
+  </table>
+
+  <h3>Course 8: 実践的なアーキテクチャ</h3>
+  <table>
+    <tr><th>#</th><th>レッスン</th><th>演習（採点対象）</th></tr>
+    <tr><td>1</td><td>インターフェースで依存を注入する</td><td><code>Notifier</code>インターフェースへのDIで<code>OrderService</code>を実装</td></tr>
+    <tr><td>2</td><td>リポジトリパターンでデータアクセスを抽象化する</td><td><code>UserRepository</code>のインメモリ実装とインターフェース経由の利用</td></tr>
+    <tr><td>3</td><td>サービス層でビジネスロジックを分離する</td><td>リポジトリと組み合わせた口座間送金サービスを実装</td></tr>
+    <tr><td>4</td><td>関数オプションパターンで柔軟な初期化をする</td><td><code>Option</code>を使った<code>NewServer</code>の可変長引数初期化</td></tr>
+    <tr><td>5（道場）</td><td>レイヤードアーキテクチャを組み立てる</td><td>リポジトリ・サービス層・DIを組み合わせた貸出サービスを実装</td></tr>
+  </table>
+
+  <h3>Course 9: デプロイ・Docker化</h3>
+  <table>
+    <tr><th>#</th><th>レッスン</th><th>演習（採点対象）</th></tr>
+    <tr><td>1</td><td>環境変数で設定を切り替える</td><td>getenv関数を注入する<code>LoadConfig</code>を実装</td></tr>
+    <tr><td>2</td><td>ヘルスチェックエンドポイントを実装する</td><td><code>HealthChecker</code>の結果に応じたHTTPハンドラーを実装</td></tr>
+    <tr><td>3</td><td>グレースフルシャットダウンを実装する</td><td><code>context.WithTimeout</code>を使った<code>GracefulShutdown</code>を実装</td></tr>
+    <tr><td>4</td><td>構造化ロギングでコンテナ環境に対応する</td><td><code>log/slog</code>でJSON形式のログ出力を実装</td></tr>
+    <tr><td>5（道場）</td><td>本番向けのHTTPサーバーを組み立てる</td><td>設定・ヘルスチェック・DIを組み合わせた<code>NewApp</code>を実装</td></tr>
   </table>
 
   <h2>Course「Web APIの基礎」レッスン詳細</h2>
@@ -271,13 +340,17 @@
   </div>
 
   <h2>今後の進め方（案）</h2>
-  <p>要件定義に挙げた機能は一通り実装済み。ここから先は、サービスとして公開するための作り込みが中心になる。</p>
-  <ol>
-    <li>デザインのブラッシュアップ。要件で掲げた「Progateに近いポップな雰囲気（キャラクター・バッジ等のゲーミフィケーション）」は未着手で、現状は機能優先の素朴なUIになっている</li>
-    <li>本番デプロイ。クラウド上でのサンドボックス実行基盤（Docker Engine直叩き / gVisor / Firecracker等のセキュリティレベル選定）、HTTPS化と <code>SECURE_COOKIE=true</code> の適用、アプリDBのSQLiteからPostgreSQL等への移行検討</li>
-    <li>レッスンの拡充。Go以外の言語コースを追加する場合は、判定イメージを言語ごとに用意する仕組みへの一般化が必要</li>
-    <li>運用面の整備（パスワードリセット、レート制限、採点キューによる同時実行数の制御など）</li>
-  </ol>
+  <p>
+    要件定義に挙げた機能は一通り実装済み。デザインのブラッシュアップ（Progate風のポップな配色・カード）、
+    CSRF対策・レート制限・採点キューによる同時実行数の制御に加え、「新コース追加」（Course 6〜9）もすべて完了した。
+    残るは、サービスとして公開するための本番デプロイのみ。
+  </p>
+  <ul>
+    <li>クラウド上でのサンドボックス実行基盤選定（Docker Engine直叩き / gVisor / Firecracker等のセキュリティレベル検討）</li>
+    <li>HTTPS化と <code>SECURE_COOKIE=true</code> の適用</li>
+    <li>アプリDBのSQLiteからPostgreSQL等への移行検討</li>
+    <li>Course「デプロイ・Docker化」で学んだ内容（環境変数設定・ヘルスチェック・グレースフルシャットダウン）を、CodeForge自身のバックエンドにも適用する</li>
+  </ul>
 </main>
 
 <footer class="page">

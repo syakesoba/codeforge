@@ -209,10 +209,38 @@
   <ul>
     <li>応答が届く前に入力がさらに進んでいた場合は、送信時点のソースと現在のソースを比較して古い結果を破棄する（連番やrefは使わず、ドキュメント内容そのものを比較することで実現）</li>
     <li><code>/check</code>の診断から<code>undefined: X</code>の識別子一覧を<code>unresolvedImports</code>として状態管理し、エディタ下に常設の案内バー（「未解決のimportがあります」＋「インポートを自動修正」ボタン）を表示する。<code>/format</code>呼び出し時はこの一覧を<code>hints</code>として渡す</li>
-    <li>メッセージが <code>undefined: </code> で始まる診断には、VSCodeのクイックフィックスに相当する <code>actions</code>（「インポートを自動修正」）も付与している。押すと同じく<code>hints</code>付きで<code>/format</code>を呼び、返ってきたコードでエディタ全体を置き換える。ただしCodeMirrorの診断ホバーは発見しにくいため、上記の常設バーが主な導線になっている</li>
+    <li>メッセージが <code>undefined: </code> で始まる診断には、VSCodeのクイックフィックスに相当する <code>actions</code>（「インポートを自動修正」）も付与している。押すとその診断1件分の識別子だけを<code>hints</code>として<code>/format</code>を呼び、返ってきたコードでエディタ全体を置き換える。ただしCodeMirrorの診断ホバーは発見しにくいため、上記の常設バーが主な導線になっている</li>
     <li>常設の「フォーマット」ボタンからも、<code>unresolvedImports</code>をhintsとして渡しつつ、いつでも明示的に同じ処理を呼び出せる</li>
     <li>エディタのインデント単位は<code>@codemirror/language</code>の<code>indentUnit.of("\t")</code>でタブに設定している。未設定だとCodeMirrorのデフォルト（スペース2つ）が使われ、gofmt準拠のタブインデントと改行後の字下げが視覚的に揃わなくなる</li>
   </ul>
+
+  <div class="callout warn">
+    <strong>ホバーツールチップがすぐ閉じる／インポート自動修正が反映されない、の原因と対策</strong>
+    <p style="margin:0 0 8px">
+      <strong>①無限ループ</strong>: <code>applyFixImports</code>（useCallback）の依存配列に<code>unresolvedImports</code>（stateの値）を直接入れていたため、
+      チェックが完了するたびに新しい配列参照が作られて<code>applyFixImports</code>、延いては<code>goLinter</code>（useMemo）が毎回作り直されていた。
+      <code>goLinter</code>は<code>CodeMirror</code>の<code>extensions</code>配列に含まれるため、参照が変わるたびに拡張機能全体が再構成され、
+      表示中のホバーツールチップが強制的に閉じられ、さらに拡張機能の再構成自体が新たなチェックを誘発するという無限ループになっていた。
+      対策として、修正対象の識別子を（全件ではなく）クリックされた診断1件分だけに絞り、<code>applyFixImports</code>の依存配列から
+      <code>unresolvedImports</code>を完全に排除した（依存は<code>problem.id</code>のみ）。
+    </p>
+    <p style="margin:0 0 8px">
+      <strong>②tooltipのクリッピング</strong>: lintのホバーツールチップはデフォルトでは<code>.cm-editor</code>自身の中
+      （＝角丸表示のため<code>overflow-hidden</code>を付けている外側のdiv内）に描画されるため、範囲外にはみ出す部分が
+      クリップされ、マウスをテキストからツールチップへ移動する途中で領域から外れて閉じてしまう場合があった。
+      <code>@codemirror/view</code>の<code>tooltips({ parent: document.body })</code>拡張を追加し、
+      ツールチップを<code>document.body</code>直下にポータル描画することでクリッピングの影響を受けないようにした。
+    </p>
+    <p style="margin:0">
+      <strong>③外部value更新の遅延</strong>: <code>@uiw/react-codemirror</code>は、ユーザーが入力中とみなしている間
+      （直近の入力からの内部タイマーが切れるまで）は<code>value</code>propの外部からの変更を即座に反映せず、
+      保留してしまう内部実装（<code>typingLatch</code>）になっている。「フォーマット」ボタンやドラフト復元は
+      <code>setCode(fixed)</code>でこの<code>value</code>prop経由の更新に頼っていたため、タイミングによっては
+      反映が大きく遅れたり反映されないように見えたりした。対策として、<code>ref</code>経由で取得した
+      <code>EditorView</code>に対して<code>view.dispatch(...)</code>で直接変更を書き込む方式に統一した
+      （<code>onChange</code>は通常のdispatchと同様に発火するため、React側の<code>code</code> stateも自動的に追従する）。
+    </p>
+  </div>
 
   <h2>学習体験の向上（コード自動保存・進捗バー・ストリーク/バッジ）</h2>
   <ul>

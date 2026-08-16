@@ -155,8 +155,9 @@
 
   <div class="callout note">
     <strong>現在地点</strong>
-    全5コース27レッスンのコンテンツと、ユーザー認証・学習進捗の保存まで実装・動作確認済み。
-    残るのはデザインのブラッシュアップ（Progate風のポップな見た目）と本番デプロイ。
+    全5コース27レッスン＋ユーザー認証・学習進捗の保存に加え、エディタのimportクイックフィックスやCSRF/レート制限/採点キューイングも実装済み。
+    「新コース追加」（Course 6〜9: テストの書き方・エラーハンドリング・実践的なアーキテクチャ・デプロイ/Docker化、各全5レッスン）もすべて完了した。
+    残るは本番デプロイのみ。
     詳細は <a href="plan.html">実装プラン</a> を参照。
   </div>
 
@@ -168,6 +169,10 @@
     <tr><td>3</td><td>フレームワークで作るAPI</td><td>5</td><td>Ginのルーティング・バリデーション・ミドルウェア</td></tr>
     <tr><td>4</td><td>データベース連携</td><td>5</td><td><code>database/sql</code>とGORMによるCRUD</td></tr>
     <tr><td>5</td><td>認証・JWT</td><td>5</td><td>bcrypt、JWT発行/検証、認証ミドルウェア</td></tr>
+    <tr><td>6</td><td>テストの書き方</td><td>5</td><td>テーブル駆動テスト、サブテスト、モック、エラーケース、httptest</td></tr>
+    <tr><td>7</td><td>エラーハンドリング</td><td>5</td><td>カスタムエラー型、ラップ、errors.Is/As、errors.Join</td></tr>
+    <tr><td>8</td><td>実践的なアーキテクチャ</td><td>5</td><td>DI、リポジトリパターン、サービス層、関数オプションパターン</td></tr>
+    <tr><td>9</td><td>デプロイ・Docker化</td><td>5</td><td>環境変数設定、ヘルスチェック、グレースフルシャットダウン、構造化ロギング</td></tr>
   </table>
   <p>各コースの最終レッスンは「道場」として、そのコースの内容を統合するまとめ問題になっている。</p>
 
@@ -181,7 +186,7 @@
     <a class="card" href="plan.html">
       <span class="tag">Plan</span>
       <h3>実装プラン</h3>
-      <p>全5コース27レッスンの構成と各レッスンの一覧、これまでの進捗と今後のロードマップ。</p>
+      <p>全9コース47レッスンの構成と各レッスンの一覧、これまでの進捗と今後のロードマップ。</p>
     </a>
     <a class="card" href="design.html">
       <span class="tag">Design</span>

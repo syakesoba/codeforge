@@ -93,6 +93,54 @@ export const courses: Course[] = [
       { id: "auth-jwt-05", title: "Lesson 5（道場）: ログインAPIを作ろう" },
     ],
   },
+  {
+    id: "testing",
+    title: "テストの書き方",
+    accent: "emerald",
+    lessons: [
+      { id: "testing-01", title: "Lesson 1: テーブル駆動テストを書く" },
+      { id: "testing-02", title: "Lesson 2: サブテストを使いこなす" },
+      { id: "testing-03", title: "Lesson 3: インターフェースでモックする" },
+      { id: "testing-04", title: "Lesson 4: エラーケースをテストする" },
+      { id: "testing-05", title: "Lesson 5（道場）: HTTPハンドラーをテストする" },
+    ],
+  },
+  {
+    id: "error-handling",
+    title: "エラーハンドリング",
+    accent: "orange",
+    lessons: [
+      { id: "error-handling-01", title: "Lesson 1: カスタムエラー型を定義する" },
+      { id: "error-handling-02", title: "Lesson 2: エラーをラップする" },
+      { id: "error-handling-03", title: "Lesson 3: errors.Is / errors.As で判定する" },
+      { id: "error-handling-04", title: "Lesson 4: 複数のエラーをまとめる" },
+      { id: "error-handling-05", title: "Lesson 5（道場）: 実践的なエラーハンドリング" },
+    ],
+  },
+  {
+    id: "architecture",
+    title: "実践的なアーキテクチャ",
+    accent: "indigo",
+    lessons: [
+      { id: "architecture-01", title: "Lesson 1: インターフェースで依存を注入する" },
+      { id: "architecture-02", title: "Lesson 2: リポジトリパターンでデータアクセスを抽象化する" },
+      { id: "architecture-03", title: "Lesson 3: サービス層でビジネスロジックを分離する" },
+      { id: "architecture-04", title: "Lesson 4: 関数オプションパターンで柔軟な初期化をする" },
+      { id: "architecture-05", title: "Lesson 5（道場）: レイヤードアーキテクチャを組み立てる" },
+    ],
+  },
+  {
+    id: "deploy",
+    title: "デプロイ・Docker化",
+    accent: "cyan",
+    lessons: [
+      { id: "deploy-01", title: "Lesson 1: 環境変数で設定を切り替える" },
+      { id: "deploy-02", title: "Lesson 2: ヘルスチェックエンドポイントを実装する" },
+      { id: "deploy-03", title: "Lesson 3: グレースフルシャットダウンを実装する" },
+      { id: "deploy-04", title: "Lesson 4: 構造化ロギングでコンテナ環境に対応する" },
+      { id: "deploy-05", title: "Lesson 5（道場）: 本番向けのHTTPサーバーを組み立てる" },
+    ],
+  },
 ];
 
 export const lessons: LessonMeta[] = courses.flatMap((c) => c.lessons);
