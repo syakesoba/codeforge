@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import CodeMirror from "@uiw/react-codemirror";
+import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import { go } from "@codemirror/lang-go";
 import { indentUnit } from "@codemirror/language";
 import {
@@ -9,7 +9,7 @@ import {
   lintGutter,
   type Diagnostic as CMDiagnostic,
 } from "@codemirror/lint";
-import type { EditorView } from "@codemirror/view";
+import { tooltips, type EditorView } from "@codemirror/view";
 import SlideViewer from "@/components/SlideViewer";
 import SuccessModal from "@/components/SuccessModal";
 import {
@@ -35,14 +35,16 @@ const AUTOSAVE_DELAY_MS = 1200;
 function toCMDiagnostic(
   d: Diagnostic,
   view: EditorView,
-  onFixImports: (view: EditorView) => void,
+  onFixImports: (view: EditorView, hint: string) => void,
 ): CMDiagnostic {
   const lineCount = view.state.doc.lines;
   const lineNumber = Math.min(Math.max(d.line, 1), lineCount);
   const line = view.state.doc.line(lineNumber);
   const from = Math.min(line.from + Math.max(d.column - 1, 0), line.to);
 
-  const isImportIssue = d.message.startsWith("undefined: ");
+  const undefinedPrefix = "undefined: ";
+  const isImportIssue = d.message.startsWith(undefinedPrefix);
+  const missingIdent = d.message.slice(undefinedPrefix.length);
 
   return {
     from,
@@ -53,7 +55,7 @@ function toCMDiagnostic(
       ? [
           {
             name: "インポートを自動修正",
-            apply: (v) => onFixImports(v),
+            apply: (v) => onFixImports(v, missingIdent),
           },
         ]
       : undefined,
@@ -62,6 +64,7 @@ function toCMDiagnostic(
 
 export default function LessonWorkspace({ problem }: { problem: Problem }) {
   const { user, loading: authLoading, markCompleted } = useAuth();
+  const editorRef = useRef<ReactCodeMirrorRef>(null);
   const [code, setCode] = useState(problem.starterCode);
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -80,6 +83,15 @@ export default function LessonWorkspace({ problem }: { problem: Problem }) {
   // CodeMirrorの診断ホバーツールチップからの「インポートを自動修正」は
   // マウスを正確に赤い波線へ重ねないと出てこず気づきにくいため、
   // 未解決のimportがある間は常設のボタンでも同じ修正を実行できるようにする。
+  //
+  // 注意: goLinter（useMemo）はapplyFixImportsに依存しているため、
+  // applyFixImportsの依存配列にunresolvedImports（stateの値）を直接入れると、
+  // チェックが完了するたびに新しい配列参照が作られてgoLinterも作り直され、
+  // CodeMirrorのextensions配列が変わるたびに拡張機能全体が再構成されて
+  // ホバーツールチップが閉じてしまい、さらに再構成自体が新たなチェックを
+  // 誘発する無限ループになっていた。そのため、修正対象の識別子は
+  // （全件ではなく）クリックされた診断が持つ1件だけをその場でapplyFixImports
+  // に渡すようにし、unresolvedImports stateには一切依存しないようにしている。
   const [unresolvedImports, setUnresolvedImports] = useState<string[]>([]);
 
   // 自動保存の初期読み込みが終わるまでは、読み込み前のコードを保存で
@@ -111,7 +123,18 @@ export default function LessonWorkspace({ problem }: { problem: Problem }) {
 
       if (cancelled) return;
       if (draft !== null) {
-        setCode(draft);
+        // setCode(draft) だけだと、fetch待ちの間にユーザーが入力を始めていた
+        // 場合に@uiw/react-codemirror側の外部value同期が保留され、復元が
+        // 反映されなかったり後から予期せず上書きされたりし得るため、
+        // view.dispatchで直接反映する。
+        const view = editorRef.current?.view;
+        if (view) {
+          view.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert: draft },
+          });
+        } else {
+          setCode(draft);
+        }
         lastSavedCodeRef.current = draft;
       } else {
         lastSavedCodeRef.current = problem.starterCode;
@@ -154,19 +177,19 @@ export default function LessonWorkspace({ problem }: { problem: Problem }) {
   }, [code, problem.id, user]);
 
   const applyFixImports = useCallback(
-    async (view: EditorView) => {
+    async (view: EditorView, hint: string) => {
       try {
         const current = view.state.doc.toString();
-        const fixed = await formatCode(problem.id, current, unresolvedImports);
+        const fixed = await formatCode(problem.id, current, [hint]);
         view.dispatch({
           changes: { from: 0, to: view.state.doc.length, insert: fixed },
         });
-        setUnresolvedImports([]);
+        setUnresolvedImports((prev) => prev.filter((i) => i !== hint));
       } catch {
         // 失敗しても何もしない（次の入力で再チェックされる）
       }
     },
-    [problem.id, unresolvedImports],
+    [problem.id],
   );
 
   const goLinter = useMemo(
@@ -211,7 +234,18 @@ export default function LessonWorkspace({ problem }: { problem: Problem }) {
     setErrorMessage(null);
     try {
       const fixed = await formatCode(problem.id, code, unresolvedImports);
-      setCode(fixed);
+      // setCode(fixed) だけだと @uiw/react-codemirror 側の外部value同期が
+      // 「まだ入力中とみなされる間」ペンディングされ、反映が遅れる/されない
+      // ことがあったため、applyFixImportsと同様にview.dispatchで直接反映する。
+      // onChangeが発火するのでReact側のcode stateも自動的に追従する。
+      const view = editorRef.current?.view;
+      if (view) {
+        view.dispatch({
+          changes: { from: 0, to: view.state.doc.length, insert: fixed },
+        });
+      } else {
+        setCode(fixed);
+      }
       setUnresolvedImports([]);
     } catch (err) {
       setErrorMessage(
@@ -275,12 +309,28 @@ export default function LessonWorkspace({ problem }: { problem: Problem }) {
       <div className="flex flex-col gap-4">
         <div className="overflow-hidden rounded-xl border border-black/10 dark:border-white/10">
           <CodeMirror
+            ref={editorRef}
             value={code}
             height="360px"
             // GoはgofmtでタブインデントするためindentUnitをタブにする。
             // 未指定だとCodeMirrorのデフォルト（スペース2つ）が使われ、
             // 改行時に挿入される字下げが既存のタブ行と揃わなくなる。
-            extensions={[go(), indentUnit.of("\t"), lintGutter(), goLinter]}
+            //
+            // tooltips({ parent: document.body }): lintのホバーツールチップは
+            // デフォルトでは.cm-editor自身の中（＝角丸表示のためoverflow-hiddenを
+            // 付けている外側のdiv内）に描画されるため、範囲外にはみ出す部分が
+            // クリップされ、マウスをテキストからツールチップへ移動する途中で
+            // 領域から外れて即座に閉じてしまっていた。document.body直下に
+            // ポータルとして描画することでこの問題を回避する。
+            extensions={[
+              go(),
+              indentUnit.of("\t"),
+              lintGutter(),
+              goLinter,
+              ...(typeof document !== "undefined"
+                ? [tooltips({ parent: document.body })]
+                : []),
+            ]}
             onChange={setCode}
           />
         </div>

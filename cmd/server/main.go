@@ -192,6 +192,17 @@ func getAnswerHandler() http.HandlerFunc {
 // 大幅に短く設定する。go build はコンパイルのみで通常は1秒未満で終わる。
 const checkTimeout = 10 * time.Second
 
+// readTargetIfWritesTest は、ユーザーがテストコードを書く形式のレッスン
+// （WritesTest）でのみ target.go（正しい実装）を読み込んで返す。
+// 通常のレッスンでは nil を返す（lint.Check/FixImportsはnilなら通常の
+// 実装コード用の挙動になる）。
+func readTargetIfWritesTest(problem problems.Problem) ([]byte, error) {
+	if !problem.WritesTest {
+		return nil, nil
+	}
+	return problem.ReadTarget(problemsBaseDir)
+}
+
 func checkHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
@@ -219,11 +230,17 @@ func checkHandler() http.HandlerFunc {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
+		target, err := readTargetIfWritesTest(problem)
+		if err != nil {
+			log.Printf("failed to read target.go: %v", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
 
 		ctx, cancel := context.WithTimeout(r.Context(), checkTimeout)
 		defer cancel()
 
-		diagnostics, err := lint.Check(ctx, goMod, goSum, req.Code)
+		diagnostics, err := lint.Check(ctx, goMod, goSum, req.Code, target)
 		if err != nil {
 			log.Printf("check error: %v", err)
 			http.Error(w, "internal error", http.StatusInternalServerError)
@@ -264,11 +281,17 @@ func formatHandler() http.HandlerFunc {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
+		target, err := readTargetIfWritesTest(problem)
+		if err != nil {
+			log.Printf("failed to read target.go: %v", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
 
 		ctx, cancel := context.WithTimeout(r.Context(), checkTimeout)
 		defer cancel()
 
-		formatted, err := lint.FixImports(ctx, goMod, goSum, req.Code, req.Hints)
+		formatted, err := lint.FixImports(ctx, goMod, goSum, req.Code, req.Hints, target)
 		if err != nil {
 			// 構文エラーがあるとgoimportsは整形できない。ユーザーへの
 			// エラーメッセージとしてそのまま返す。
