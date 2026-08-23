@@ -60,19 +60,12 @@ cd frontend && npm run dev
 
 ブラウザで http://localhost:3000 を開きます。
 
-停止方法やトラブルシューティングを含む詳細は [起動方法](docs/codeforge/setup.html) を参照してください。
+停止方法やトラブルシューティングを含む詳細は `docs/codeforge/setup.html` を参照してください（次項のとおりリポジトリには含まれません）。
 
 ## ドキュメント
 
-`docs/codeforge/` 配下のHTMLをブラウザで開いてください。
-
-| ドキュメント | 内容 |
-|---|---|
-| [概要](docs/codeforge/index.html) | プロジェクト全体の概要とコース一覧 |
-| [要件定義](docs/codeforge/requirements.html) | 対象ユーザー、コア機能、技術選定の意思決定 |
-| [実装プラン](docs/codeforge/plan.html) | コース構成、進捗、今後のロードマップ |
-| [詳細設計](docs/codeforge/design.html) | サンドボックス実行の仕組み、API仕様、ディレクトリ構成 |
-| [起動方法](docs/codeforge/setup.html) | セットアップ・起動・停止・環境変数 |
+設計ドキュメント（概要・要件定義・実装プラン・詳細設計・起動方法）は `docs/codeforge/` 配下にHTMLとして用意していますが、
+`.gitignore` によりリポジトリには含めていません。必要な場合は開発者に直接お問い合わせください。
 
 ## ディレクトリ構成
 
