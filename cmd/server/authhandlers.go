@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -72,7 +72,7 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(v); err != nil {
-		log.Printf("failed to encode response: %v", err)
+		slog.Error("failed to encode response", "err", err)
 	}
 }
 
@@ -98,7 +98,7 @@ func signUpHandler(svc *auth.Service, secureCookie bool) http.HandlerFunc {
 			writeError(w, http.StatusConflict, "このメールアドレスは既に登録されています")
 			return
 		case err != nil:
-			log.Printf("signup error: %v", err)
+			slog.Error("signup error", "err", err)
 			writeError(w, http.StatusInternalServerError, "internal error")
 			return
 		}
@@ -122,7 +122,7 @@ func logInHandler(svc *auth.Service, secureCookie bool) http.HandlerFunc {
 			writeError(w, http.StatusUnauthorized, "メールアドレスまたはパスワードが正しくありません")
 			return
 		case err != nil:
-			log.Printf("login error: %v", err)
+			slog.Error("login error", "err", err)
 			writeError(w, http.StatusInternalServerError, "internal error")
 			return
 		}
@@ -135,7 +135,7 @@ func logInHandler(svc *auth.Service, secureCookie bool) http.HandlerFunc {
 func logOutHandler(svc *auth.Service, secureCookie bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := svc.LogOut(sessionToken(r)); err != nil {
-			log.Printf("logout error: %v", err)
+			slog.Error("logout error", "err", err)
 		}
 		clearSessionCookie(w, secureCookie)
 		w.WriteHeader(http.StatusNoContent)
@@ -163,7 +163,7 @@ func progressHandler(svc *auth.Service, st *store.Store) http.HandlerFunc {
 
 		entries, err := st.CompletedProgress(user.ID)
 		if err != nil {
-			log.Printf("failed to list progress: %v", err)
+			slog.Error("failed to list progress", "err", err)
 			writeError(w, http.StatusInternalServerError, "internal error")
 			return
 		}

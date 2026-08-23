@@ -1,0 +1,9 @@
+.git
+.claude
+data
+docs
+frontend
+judge-image
+*.log
+*.exe
+*.test
