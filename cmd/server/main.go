@@ -211,7 +211,7 @@ func main() {
 	mux.HandleFunc("GET /api/me", meHandler(authSvc))
 	mux.HandleFunc("GET /api/progress", progressHandler(authSvc, st))
 
-	handler := withRequestLogging(logger, withCORS(cfg.FrontendOrigin, withCSRFCookie(cfg.SecureCookie, mux)))
+	handler := withRequestLogging(logger, withHSTS(cfg.SecureCookie, withCORS(cfg.FrontendOrigin, withCSRFCookie(cfg.SecureCookie, mux))))
 	srv := &http.Server{
 		Addr:    ":" + cfg.Port,
 		Handler: handler,
@@ -247,6 +247,20 @@ func main() {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		logger.Error("graceful shutdown failed", "err", err)
 	}
+}
+
+// withHSTS は Strict-Transport-Security ヘッダーを付与する。
+// TLS終端はリバースプロキシ/クラウドLBが担い、このサーバー自身はHTTPで
+// 動く構成を前提とするため、r.TLS の有無ではなく SECURE_COOKIE と同じ
+// 「本番でHTTPS配信されているか」の判断（環境変数）に乗せる。
+func withHSTS(secure bool, h http.Handler) http.Handler {
+	if !secure {
+		return h
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+		h.ServeHTTP(w, r)
+	})
 }
 
 func withCORS(origin string, h http.Handler) http.Handler {
