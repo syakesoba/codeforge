@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/syakesoba/codeforge/internal/auth"
@@ -36,7 +36,7 @@ func getDraftHandler(authSvc *auth.Service, st *store.Store) http.HandlerFunc {
 
 		code, ok, err := st.GetDraft(user.ID, id)
 		if err != nil {
-			log.Printf("failed to get draft: %v", err)
+			slog.Error("failed to get draft", "err", err)
 			writeError(w, http.StatusInternalServerError, "internal error")
 			return
 		}
@@ -71,7 +71,7 @@ func saveDraftHandler(authSvc *auth.Service, st *store.Store) http.HandlerFunc {
 		}
 
 		if err := st.SaveDraft(user.ID, id, req.Code); err != nil {
-			log.Printf("failed to save draft: %v", err)
+			slog.Error("failed to save draft", "err", err)
 			writeError(w, http.StatusInternalServerError, "internal error")
 			return
 		}

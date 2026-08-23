@@ -4,11 +4,14 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/syakesoba/codeforge/internal/auth"
@@ -20,9 +23,6 @@ import (
 )
 
 const problemsBaseDir = "problems"
-
-// dbPath はユーザー・セッション・学習進捗を保存するSQLiteファイルのパスです。
-const dbPath = "data/codeforge.db"
 
 type submitRequest struct {
 	Code string `json:"code"`
@@ -54,23 +54,140 @@ type formatResponse struct {
 	Code string `json:"code"`
 }
 
-func main() {
-	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
-		log.Fatalf("failed to create data directory: %v", err)
+// config はホスト環境ごとに変わる設定値です。ハードコードせず環境変数から
+// 読み込むことで、ローカル・Docker・本番クラウドのいずれでも同じバイナリを
+// 使い回せるようにします（getenvを引数で受け取るのは単体テストで
+// os.Getenvを本物の環境変数に触れずに差し替えられるようにするためです）。
+type config struct {
+	Port            string
+	DBPath          string
+	FrontendOrigin  string
+	SecureCookie    bool
+	ShutdownTimeout time.Duration
+}
+
+func loadConfig(getenv func(string) string) config {
+	port := getenv("PORT")
+	if port == "" {
+		port = "8080"
 	}
 
-	st, err := store.Open(dbPath)
+	dbPath := getenv("DB_PATH")
+	if dbPath == "" {
+		dbPath = "data/codeforge.db"
+	}
+
+	frontendOrigin := getenv("FRONTEND_ORIGIN")
+	if frontendOrigin == "" {
+		frontendOrigin = "http://localhost:3000"
+	}
+
+	// SameSite=None は Secure 必須で、ローカル開発(http)ではCookieが拒否される。
+	// 本番(HTTPS)では SECURE_COOKIE=true を設定すること。
+	secureCookie := getenv("SECURE_COOKIE") == "true"
+
+	shutdownTimeout := 10 * time.Second
+	if v := getenv("SHUTDOWN_TIMEOUT_SECONDS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			shutdownTimeout = time.Duration(n) * time.Second
+		}
+	}
+
+	return config{
+		Port:            port,
+		DBPath:          dbPath,
+		FrontendOrigin:  frontendOrigin,
+		SecureCookie:    secureCookie,
+		ShutdownTimeout: shutdownTimeout,
+	}
+}
+
+// HealthChecker はヘルスチェックの本体（例: DBへの疎通確認）を表します。
+type HealthChecker func() error
+
+func healthHandler(check HealthChecker) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := check(); err != nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			w.Write([]byte(err.Error()))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
+	}
+}
+
+// statusRecorder はハンドラが実際に書き込んだステータスコードを記録するための
+// http.ResponseWriterラッパーです。アクセスログにステータスを載せるために使います。
+type statusRecorder struct {
+	http.ResponseWriter
+	status int
+}
+
+func (r *statusRecorder) WriteHeader(status int) {
+	r.status = status
+	r.ResponseWriter.WriteHeader(status)
+}
+
+// withRequestLogging は全リクエストの処理結果を構造化ログ（JSON）として出力する。
+func withRequestLogging(logger *slog.Logger, h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+		h.ServeHTTP(rec, r)
+		logger.Info("request handled",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", rec.status,
+			"duration_ms", time.Since(start).Milliseconds(),
+		)
+	})
+}
+
+// runHealthCheckClient は `-healthcheck` 引数で起動された場合の挙動です。
+// distrolessベースの実行イメージにはシェルもcurlも無いため、Dockerの
+// HEALTHCHECK命令から直接このバイナリ自身を呼び出して疎通確認させます。
+func runHealthCheckClient() {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	client := http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Get("http://localhost:" + port + "/healthz")
 	if err != nil {
-		log.Fatalf("failed to open store: %v", err)
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		os.Exit(1)
+	}
+}
+
+func main() {
+	if len(os.Args) > 1 && os.Args[1] == "-healthcheck" {
+		runHealthCheckClient()
+		return
+	}
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
+
+	cfg := loadConfig(os.Getenv)
+
+	if err := os.MkdirAll(filepath.Dir(cfg.DBPath), 0o755); err != nil {
+		logger.Error("failed to create data directory", "err", err)
+		os.Exit(1)
+	}
+
+	st, err := store.Open(cfg.DBPath)
+	if err != nil {
+		logger.Error("failed to open store", "err", err)
+		os.Exit(1)
 	}
 	defer st.Close()
 
 	authSvc := auth.New(st)
 	runner := judge.NewRunner()
-
-	// SameSite=None は Secure 必須で、ローカル開発(http)ではCookieが拒否される。
-	// 本番(HTTPS)では SECURE_COOKIE=true を設定すること。
-	secureCookie := os.Getenv("SECURE_COOKIE") == "true"
 
 	// ログイン試行のブルートフォース対策。IPアドレス単位で制限する
 	// （単一プロセスでの運用のためインメモリ実装。リバースプロキシ配下での
@@ -79,6 +196,7 @@ func main() {
 	signupLimiter := ratelimit.New(5, time.Minute)
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /healthz", healthHandler(st.Ping))
 	mux.HandleFunc("GET /api/problems/{id}", getProblemHandler())
 	mux.HandleFunc("GET /api/problems/{id}/answer", getAnswerHandler())
 	mux.HandleFunc("POST /api/problems/{id}/submit", requireCSRF(submitHandler(runner, authSvc, st)))
@@ -87,23 +205,62 @@ func main() {
 	mux.HandleFunc("GET /api/problems/{id}/draft", getDraftHandler(authSvc, st))
 	mux.HandleFunc("POST /api/problems/{id}/draft", requireCSRF(saveDraftHandler(authSvc, st)))
 
-	mux.HandleFunc("POST /api/auth/signup", rateLimited(signupLimiter, requireCSRF(signUpHandler(authSvc, secureCookie))))
-	mux.HandleFunc("POST /api/auth/login", rateLimited(loginLimiter, requireCSRF(logInHandler(authSvc, secureCookie))))
-	mux.HandleFunc("POST /api/auth/logout", requireCSRF(logOutHandler(authSvc, secureCookie)))
+	mux.HandleFunc("POST /api/auth/signup", rateLimited(signupLimiter, requireCSRF(signUpHandler(authSvc, cfg.SecureCookie))))
+	mux.HandleFunc("POST /api/auth/login", rateLimited(loginLimiter, requireCSRF(logInHandler(authSvc, cfg.SecureCookie))))
+	mux.HandleFunc("POST /api/auth/logout", requireCSRF(logOutHandler(authSvc, cfg.SecureCookie)))
 	mux.HandleFunc("GET /api/me", meHandler(authSvc))
 	mux.HandleFunc("GET /api/progress", progressHandler(authSvc, st))
 
-	frontendOrigin := os.Getenv("FRONTEND_ORIGIN")
-	if frontendOrigin == "" {
-		frontendOrigin = "http://localhost:3000"
+	handler := withRequestLogging(logger, withHSTS(cfg.SecureCookie, withCORS(cfg.FrontendOrigin, withCSRFCookie(cfg.SecureCookie, mux))))
+	srv := &http.Server{
+		Addr:    ":" + cfg.Port,
+		Handler: handler,
 	}
 
-	addr := ":8080"
-	log.Printf("listening on %s (allowing CORS from %s, db=%s)", addr, frontendOrigin, dbPath)
-	handler := withCORS(frontendOrigin, withCSRFCookie(secureCookie, mux))
-	if err := http.ListenAndServe(addr, handler); err != nil {
-		log.Fatal(err)
+	serveErr := make(chan error, 1)
+	go func() {
+		logger.Info("listening", "addr", srv.Addr, "frontend_origin", cfg.FrontendOrigin, "db", cfg.DBPath)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			serveErr <- err
+			return
+		}
+		serveErr <- nil
+	}()
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	select {
+	case err := <-serveErr:
+		if err != nil {
+			logger.Error("server error", "err", err)
+			os.Exit(1)
+		}
+		return
+	case <-ctx.Done():
+		stop()
 	}
+
+	logger.Info("shutting down", "timeout", cfg.ShutdownTimeout.String())
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		logger.Error("graceful shutdown failed", "err", err)
+	}
+}
+
+// withHSTS は Strict-Transport-Security ヘッダーを付与する。
+// TLS終端はリバースプロキシ/クラウドLBが担い、このサーバー自身はHTTPで
+// 動く構成を前提とするため、r.TLS の有無ではなく SECURE_COOKIE と同じ
+// 「本番でHTTPS配信されているか」の判断（環境変数）に乗せる。
+func withHSTS(secure bool, h http.Handler) http.Handler {
+	if !secure {
+		return h
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+		h.ServeHTTP(w, r)
+	})
 }
 
 func withCORS(origin string, h http.Handler) http.Handler {
@@ -132,14 +289,14 @@ func getProblemHandler() http.HandlerFunc {
 
 		markdown, err := problem.ReadMarkdown(problemsBaseDir)
 		if err != nil {
-			log.Printf("failed to read markdown: %v", err)
+			slog.Error("failed to read markdown", "err", err)
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 
 		starter, err := problem.ReadStarter(problemsBaseDir)
 		if err != nil {
-			log.Printf("failed to read starter code: %v", err)
+			slog.Error("failed to read starter code", "err", err)
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
@@ -153,7 +310,7 @@ func getProblemHandler() http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(resp); err != nil {
-			log.Printf("failed to encode response: %v", err)
+			slog.Error("failed to encode response", "err", err)
 		}
 	}
 }
@@ -176,14 +333,14 @@ func getAnswerHandler() http.HandlerFunc {
 
 		answer, err := problem.ReadAnswer(problemsBaseDir)
 		if err != nil {
-			log.Printf("failed to read answer code: %v", err)
+			slog.Error("failed to read answer code", "err", err)
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(answerResponse{Code: stripBuildIgnoreTag(string(answer))}); err != nil {
-			log.Printf("failed to encode response: %v", err)
+			slog.Error("failed to encode response", "err", err)
 		}
 	}
 }
@@ -220,19 +377,19 @@ func checkHandler() http.HandlerFunc {
 
 		goMod, err := problem.ReadGoMod(problemsBaseDir)
 		if err != nil {
-			log.Printf("failed to read go.mod: %v", err)
+			slog.Error("failed to read go.mod", "err", err)
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 		goSum, err := problem.ReadGoSum(problemsBaseDir)
 		if err != nil && !os.IsNotExist(err) {
-			log.Printf("failed to read go.sum: %v", err)
+			slog.Error("failed to read go.sum", "err", err)
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 		target, err := readTargetIfWritesTest(problem)
 		if err != nil {
-			log.Printf("failed to read target.go: %v", err)
+			slog.Error("failed to read target.go", "err", err)
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
@@ -242,14 +399,14 @@ func checkHandler() http.HandlerFunc {
 
 		diagnostics, err := lint.Check(ctx, goMod, goSum, req.Code, target)
 		if err != nil {
-			log.Printf("check error: %v", err)
+			slog.Error("check error", "err", err)
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(checkResponse{Diagnostics: diagnostics}); err != nil {
-			log.Printf("failed to encode response: %v", err)
+			slog.Error("failed to encode response", "err", err)
 		}
 	}
 }
@@ -271,19 +428,19 @@ func formatHandler() http.HandlerFunc {
 
 		goMod, err := problem.ReadGoMod(problemsBaseDir)
 		if err != nil {
-			log.Printf("failed to read go.mod: %v", err)
+			slog.Error("failed to read go.mod", "err", err)
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 		goSum, err := problem.ReadGoSum(problemsBaseDir)
 		if err != nil && !os.IsNotExist(err) {
-			log.Printf("failed to read go.sum: %v", err)
+			slog.Error("failed to read go.sum", "err", err)
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 		target, err := readTargetIfWritesTest(problem)
 		if err != nil {
-			log.Printf("failed to read target.go: %v", err)
+			slog.Error("failed to read target.go", "err", err)
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
@@ -301,7 +458,7 @@ func formatHandler() http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(formatResponse{Code: formatted}); err != nil {
-			log.Printf("failed to encode response: %v", err)
+			slog.Error("failed to encode response", "err", err)
 		}
 	}
 }
@@ -328,7 +485,7 @@ func submitHandler(runner judge.Runner, authSvc *auth.Service, st *store.Store) 
 
 		result, err := runner.Run(ctx, problem, req.Code)
 		if err != nil {
-			log.Printf("judge run error: %v", err)
+			slog.Error("judge run error", "err", err)
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
@@ -338,14 +495,14 @@ func submitHandler(runner judge.Runner, authSvc *auth.Service, st *store.Store) 
 		if result.Passed {
 			if user, err := authSvc.UserByToken(sessionToken(r)); err == nil {
 				if err := st.MarkProgress(user.ID, problem.ID); err != nil {
-					log.Printf("failed to mark progress: %v", err)
+					slog.Error("failed to mark progress", "err", err)
 				}
 			}
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(result); err != nil {
-			log.Printf("failed to encode response: %v", err)
+			slog.Error("failed to encode response", "err", err)
 		}
 	}
 }

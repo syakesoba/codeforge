@@ -52,6 +52,11 @@ func (s *Store) Close() error {
 	return s.db.Close()
 }
 
+// Ping はデータベースへの疎通を確認します。ヘルスチェックエンドポイントから使います。
+func (s *Store) Ping() error {
+	return s.db.Ping()
+}
+
 func (s *Store) migrate() error {
 	stmts := []string{
 		`CREATE TABLE IF NOT EXISTS users (
