@@ -10,7 +10,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"syscall"
 	"time"
 
@@ -315,13 +314,6 @@ func getProblemHandler() http.HandlerFunc {
 	}
 }
 
-// stripBuildIgnoreTag は answer.go 先頭の `//go:build ignore` 行
-// （ビルド対象から除外するための実装上のタグ）を、表示用に取り除く。
-func stripBuildIgnoreTag(code string) string {
-	const tag = "//go:build ignore\n\n"
-	return strings.TrimPrefix(code, tag)
-}
-
 func getAnswerHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
@@ -339,7 +331,9 @@ func getAnswerHandler() http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(answerResponse{Code: stripBuildIgnoreTag(string(answer))}); err != nil {
+		// answer.go 先頭の `//go:build ignore`（ビルド対象から除外するための
+		// 実装上のタグ）は、表示用に取り除く。
+		if err := json.NewEncoder(w).Encode(answerResponse{Code: string(problems.StripBuildIgnoreTag(answer))}); err != nil {
 			slog.Error("failed to encode response", "err", err)
 		}
 	}

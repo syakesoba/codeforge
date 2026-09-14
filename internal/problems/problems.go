@@ -2,10 +2,37 @@
 package problems
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
 )
+
+// buildIgnoreTag は answer.go / mutant.go のような「サーバー側だけで扱い、
+// レッスンディレクトリで通常のビルド対象にしたくないファイル」の先頭に書く
+// ビルド制約です。
+const buildIgnoreTag = "//go:build ignore"
+
+// StripBuildIgnoreTag は src の先頭行が `//go:build ignore` であれば、その行と
+// 直後の空行1行を取り除いた内容を返します（CRLF改行にも対応）。
+// 先頭行がタグでなければ src をそのまま返します。
+//
+// 採点ワークスペースにコピーするときや、クライアントに返すときに使います。
+// タグを残したまま target.go 等として配置すると、そのファイルがビルドから
+// 除外されてしまうためです。
+func StripBuildIgnoreTag(src []byte) []byte {
+	first, rest, found := bytes.Cut(src, []byte("\n"))
+	if string(bytes.TrimRight(first, "\r")) != buildIgnoreTag {
+		return src
+	}
+	if !found {
+		return []byte{}
+	}
+	if blank, afterBlank, ok := bytes.Cut(rest, []byte("\n")); ok && len(bytes.TrimSpace(blank)) == 0 {
+		return afterBlank
+	}
+	return rest
+}
 
 // Problem は1つの演習問題を表します。
 type Problem struct {
@@ -385,13 +412,29 @@ func (p Problem) ReadGoSum(baseDir string) ([]byte, error) {
 }
 
 // ReadTarget は（WritesTest問題の）正しい実装の中身を読み込みます。
+// 読み込んだ内容はワークスペースに target.go として配置されるため、
+// 先頭の `//go:build ignore` は取り除いて返します。
 func (p Problem) ReadTarget(baseDir string) ([]byte, error) {
-	return p.readFile(p.TargetPath(baseDir))
+	b, err := p.readFile(p.TargetPath(baseDir))
+	if err != nil {
+		return nil, err
+	}
+	return StripBuildIgnoreTag(b), nil
 }
 
 // ReadMutant は（WritesTest問題の）わざとバグを仕込んだ実装の中身を読み込みます。
+//
+// mutant.go はレッスンディレクトリでビルドされないよう `//go:build ignore` 付きで
+// 保存しているが、採点の Stage 2 では target.go として配置する。タグを残すと
+// target.go がビルドから除外されてコンパイルエラーになり、「ユーザーのテストが
+// バグを検出できた」のと区別がつかなくなる（どんなテストでも合格してしまう）
+// ため、タグを取り除いて返します。
 func (p Problem) ReadMutant(baseDir string) ([]byte, error) {
-	return p.readFile(p.MutantPath(baseDir))
+	b, err := p.readFile(p.MutantPath(baseDir))
+	if err != nil {
+		return nil, err
+	}
+	return StripBuildIgnoreTag(b), nil
 }
 
 // ReadSupportFiles は SupportFiles で指定された各ファイルの中身を読み込みます。
