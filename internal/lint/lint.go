@@ -47,6 +47,16 @@ var diagnosticPattern = regexp.MustCompile(`^(?:\./)?([^:]+):(\d+):(\d+):\s*(.+)
 
 const checkTimeout = 8 * time.Second
 
+// CheckEnvironment は /check・/format に必要な go コマンドが使える状態かを確認します。
+// 起動時の確認と、レディネスチェック（/readyz）で使います。
+func CheckEnvironment(ctx context.Context) error {
+	out, err := exec.CommandContext(ctx, "go", "version").CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("go command is not available: %w: %s", err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
 // codeFilename は target の有無に応じて、ユーザーコードを配置するファイル名を返す。
 // target が指定されている場合（WritesTestレッスン）はテストとして実行されるよう
 // "_test.go" にする。

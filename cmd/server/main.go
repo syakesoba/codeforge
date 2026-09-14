@@ -63,6 +63,12 @@ type config struct {
 	FrontendOrigin  string
 	SecureCookie    bool
 	ShutdownTimeout time.Duration
+	// JudgeImage は採点に使うDockerイメージ名。
+	JudgeImage string
+	// JudgeWorkDir は採点ワークスペースを作る親ディレクトリ（空ならOSの一時ディレクトリ）。
+	// バックエンドをコンテナで動かす場合は、ホストと同じパスでバインドマウントした
+	// ディレクトリを指定する（internal/judge の Runner.WorkDir を参照）。
+	JudgeWorkDir string
 }
 
 func loadConfig(getenv func(string) string) config {
@@ -92,12 +98,19 @@ func loadConfig(getenv func(string) string) config {
 		}
 	}
 
+	judgeImage := getenv("JUDGE_IMAGE")
+	if judgeImage == "" {
+		judgeImage = judge.NewRunner().Image
+	}
+
 	return config{
 		Port:            port,
 		DBPath:          dbPath,
 		FrontendOrigin:  frontendOrigin,
 		SecureCookie:    secureCookie,
 		ShutdownTimeout: shutdownTimeout,
+		JudgeImage:      judgeImage,
+		JudgeWorkDir:    getenv("JUDGE_WORK_DIR"),
 	}
 }
 
@@ -113,6 +126,39 @@ func healthHandler(check HealthChecker) http.HandlerFunc {
 		}
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
+	}
+}
+
+// readinessCheck は /readyz で確認する依存先1つ分です。
+type readinessCheck struct {
+	name  string
+	check func(ctx context.Context) error
+}
+
+// readyTimeout は /readyz の全チェックにかける時間の上限です。
+const readyTimeout = 5 * time.Second
+
+// readyHandler は、採点やエディタ支援を含めてリクエストを処理できる状態かを返す
+// レディネスチェックです。/healthz（プロセスとDBが生きているか）とは分けており、
+// Docker が一時的に使えないだけでコンテナが再起動されないようにしています。
+// 全チェックが成功すれば 200、1つでも失敗すれば 503 を、チェックごとの結果の
+// JSON（成功は "ok"、失敗はエラーメッセージ）とともに返します。
+func readyHandler(checks ...readinessCheck) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), readyTimeout)
+		defer cancel()
+
+		status := http.StatusOK
+		results := make(map[string]string, len(checks))
+		for _, c := range checks {
+			if err := c.check(ctx); err != nil {
+				status = http.StatusServiceUnavailable
+				results[c.name] = err.Error()
+				continue
+			}
+			results[c.name] = "ok"
+		}
+		writeJSON(w, status, results)
 	}
 }
 
@@ -187,6 +233,32 @@ func main() {
 
 	authSvc := auth.New(st)
 	runner := judge.NewRunner()
+	runner.Image = cfg.JudgeImage
+	runner.WorkDir = cfg.JudgeWorkDir
+	if cfg.JudgeWorkDir != "" {
+		if err := os.MkdirAll(cfg.JudgeWorkDir, 0o755); err != nil {
+			logger.Error("failed to create judge work directory", "err", err)
+			os.Exit(1)
+		}
+	}
+
+	readinessChecks := []readinessCheck{
+		{name: "db", check: func(context.Context) error { return st.Ping() }},
+		{name: "judge", check: runner.CheckEnvironment},
+		{name: "lint", check: lint.CheckEnvironment},
+	}
+
+	// 採点・エディタ支援に必要な環境が揃っていなくてもサーバー自体は起動する
+	// （問題の閲覧やログインは使えるため）が、気づけるよう起動時にログへ出す。
+	preflightCtx, cancelPreflight := context.WithTimeout(context.Background(), 2*readyTimeout)
+	for _, c := range readinessChecks {
+		if err := c.check(preflightCtx); err != nil {
+			logger.Error("dependency is not ready", "check", c.name, "err", err)
+			continue
+		}
+		logger.Info("dependency is ready", "check", c.name)
+	}
+	cancelPreflight()
 
 	// ログイン試行のブルートフォース対策。IPアドレス単位で制限する
 	// （単一プロセスでの運用のためインメモリ実装。リバースプロキシ配下での
@@ -196,6 +268,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", healthHandler(st.Ping))
+	mux.HandleFunc("GET /readyz", readyHandler(readinessChecks...))
 	mux.HandleFunc("GET /api/problems/{id}", getProblemHandler())
 	mux.HandleFunc("GET /api/problems/{id}/answer", getAnswerHandler())
 	mux.HandleFunc("POST /api/problems/{id}/submit", requireCSRF(submitHandler(runner, authSvc, st)))

@@ -35,6 +35,13 @@ type Runner struct {
 	ProblemsBaseDir string
 	Image           string
 	Timeout         time.Duration
+	// WorkDir は採点ワークスペースを作る親ディレクトリ。空ならOSの一時ディレクトリを使う。
+	//
+	// バックエンド自身をコンテナで動かし、ホストのDockerデーモン（ソケットをマウント）に
+	// 採点コンテナを起動させる構成では、`docker run -v` に渡すパスはホスト側で解決される。
+	// そのため、ホストとバックエンドのコンテナで同じパスになるようバインドマウントした
+	// ディレクトリを指定する必要がある。
+	WorkDir string
 }
 
 // NewRunner はデフォルト設定の Runner を作成します。
@@ -219,11 +226,17 @@ func writesTestStageFiles(supportFiles map[string]string, code, hiddenTest, impl
 // runOnce は1回分のワークスペースを作成し、Dockerサンドボックス内で
 // `go test -vet=off -json ./...` を実行する。
 func (r Runner) runOnce(ctx context.Context, goMod, goSum []byte, files map[string]string) (runOutcome, error) {
-	workdir, err := os.MkdirTemp("", "judge-*")
+	workdir, err := os.MkdirTemp(r.WorkDir, "judge-*")
 	if err != nil {
 		return runOutcome{}, fmt.Errorf("failed to create workspace: %w", err)
 	}
 	defer os.RemoveAll(workdir)
+
+	// MkdirTemp は所有者だけが読める 0700 で作る。採点コンテナは別ユーザー
+	// （採点イメージの judge, uid 1000）で動くため、読めるように広げておく。
+	if err := os.Chmod(workdir, 0o755); err != nil {
+		return runOutcome{}, fmt.Errorf("failed to chmod workspace: %w", err)
+	}
 
 	if err := writeWorkspace(workdir, goMod, goSum, files); err != nil {
 		return runOutcome{}, err
