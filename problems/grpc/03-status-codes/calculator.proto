@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package calculator;
+
+option go_package = "./;main";
+
+// Calculator は簡単な計算を行うサービスです。
+service Calculator {
+  rpc Divide(DivideRequest) returns (DivideReply);
+}
+
+message DivideRequest {
+  int64 dividend = 1;
+  int64 divisor = 2;
+}
+
+message DivideReply {
+  int64 quotient = 1;
+}

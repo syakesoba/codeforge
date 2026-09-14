@@ -9,6 +9,13 @@ import (
 	"github.com/glebarez/sqlite"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/test/bufconn"
+	"google.golang.org/protobuf/proto"
 	"gorm.io/gorm"
 )
 
@@ -17,5 +24,12 @@ var _ = gorm.Open
 var _ = sqlite.Open
 var _ = jwt.New
 var _ = bcrypt.GenerateFromPassword
+var _ = grpc.NewServer
+var _ = codes.OK
+var _ = insecure.NewCredentials
+var _ = metadata.New
+var _ = status.New
+var _ = bufconn.Listen
+var _ = proto.Marshal
 
 func main() {}

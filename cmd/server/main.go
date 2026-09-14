@@ -393,11 +393,17 @@ func checkHandler() http.HandlerFunc {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
+		supportFiles, err := problem.ReadSupportFiles(problemsBaseDir)
+		if err != nil {
+			slog.Error("failed to read support files", "err", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
 
 		ctx, cancel := context.WithTimeout(r.Context(), checkTimeout)
 		defer cancel()
 
-		diagnostics, err := lint.Check(ctx, goMod, goSum, req.Code, target)
+		diagnostics, err := lint.Check(ctx, goMod, goSum, req.Code, target, supportFiles)
 		if err != nil {
 			slog.Error("check error", "err", err)
 			http.Error(w, "internal error", http.StatusInternalServerError)
@@ -444,11 +450,17 @@ func formatHandler() http.HandlerFunc {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
+		supportFiles, err := problem.ReadSupportFiles(problemsBaseDir)
+		if err != nil {
+			slog.Error("failed to read support files", "err", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
 
 		ctx, cancel := context.WithTimeout(r.Context(), checkTimeout)
 		defer cancel()
 
-		formatted, err := lint.FixImports(ctx, goMod, goSum, req.Code, req.Hints, target)
+		formatted, err := lint.FixImports(ctx, goMod, goSum, req.Code, req.Hints, target, supportFiles)
 		if err != nil {
 			// 構文エラーがあるとgoimportsは整形できない。ユーザーへの
 			// エラーメッセージとしてそのまま返す。

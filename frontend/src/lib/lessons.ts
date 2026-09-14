@@ -141,6 +141,18 @@ export const courses: Course[] = [
       { id: "deploy-05", title: "Lesson 5（道場）: 本番向けのHTTPサーバーを組み立てる" },
     ],
   },
+  {
+    id: "grpc",
+    title: "gRPCによるサービス間通信",
+    accent: "lime",
+    lessons: [
+      { id: "grpc-01", title: "Lesson 1: Unary RPCサーバーを実装する" },
+      { id: "grpc-02", title: "Lesson 2: gRPCクライアントを実装する" },
+      { id: "grpc-03", title: "Lesson 3: ステータスコードでエラーを返す" },
+      { id: "grpc-04", title: "Lesson 4: インターセプターで共通処理を挟む" },
+      { id: "grpc-05", title: "Lesson 5（道場）: ストリーミングRPCを実装する" },
+    ],
+  },
 ];
 
 export const lessons: LessonMeta[] = courses.flatMap((c) => c.lessons);

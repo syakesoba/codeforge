@@ -17,6 +17,11 @@ type Problem struct {
 	// mutant.go（わざとバグを仕込んだ実装）の両方に対して行われる
 	// （internal/judge の2段階採点を参照）。
 	WritesTest bool
+	// SupportFiles は採点・エディタチェック用のワークスペースに常に同梱する
+	// 追加の固定ファイル名（レッスンディレクトリからの相対パス）。
+	// protocで事前生成した *.pb.go のような、ユーザーが編集しない既製コードを
+	// 使うレッスンで指定する。
+	SupportFiles []string
 }
 
 // allowlist はユーザーから渡される problemID を検証するための許可リストです。
@@ -263,6 +268,36 @@ var allowlist = map[string]Problem{
 		Title: "道場: 本番向けのHTTPサーバーを組み立てる",
 		Dir:   "deploy/05-capstone-production-server",
 	},
+	"grpc-01": {
+		ID:           "grpc-01",
+		Title:        "Unary RPCサーバーを実装する",
+		Dir:          "grpc/01-unary-rpc",
+		SupportFiles: []string{"greeter.pb.go", "greeter_grpc.pb.go"},
+	},
+	"grpc-02": {
+		ID:           "grpc-02",
+		Title:        "gRPCクライアントを実装する",
+		Dir:          "grpc/02-grpc-client",
+		SupportFiles: []string{"greeter.pb.go", "greeter_grpc.pb.go"},
+	},
+	"grpc-03": {
+		ID:           "grpc-03",
+		Title:        "ステータスコードでエラーを返す",
+		Dir:          "grpc/03-status-codes",
+		SupportFiles: []string{"calculator.pb.go", "calculator_grpc.pb.go"},
+	},
+	"grpc-04": {
+		ID:           "grpc-04",
+		Title:        "インターセプターで共通処理を挟む",
+		Dir:          "grpc/04-interceptors",
+		SupportFiles: []string{"greeter.pb.go", "greeter_grpc.pb.go"},
+	},
+	"grpc-05": {
+		ID:           "grpc-05",
+		Title:        "道場: ストリーミングRPCを実装する",
+		Dir:          "grpc/05-capstone-streaming",
+		SupportFiles: []string{"counter.pb.go", "counter_grpc.pb.go"},
+	},
 }
 
 // Get は problemID に対応する Problem を返します。存在しない場合は ok が false になります。
@@ -357,6 +392,19 @@ func (p Problem) ReadTarget(baseDir string) ([]byte, error) {
 // ReadMutant は（WritesTest問題の）わざとバグを仕込んだ実装の中身を読み込みます。
 func (p Problem) ReadMutant(baseDir string) ([]byte, error) {
 	return p.readFile(p.MutantPath(baseDir))
+}
+
+// ReadSupportFiles は SupportFiles で指定された各ファイルの中身を読み込みます。
+func (p Problem) ReadSupportFiles(baseDir string) (map[string]string, error) {
+	files := make(map[string]string, len(p.SupportFiles))
+	for _, name := range p.SupportFiles {
+		content, err := p.readFile(filepath.Join(baseDir, p.Dir, name))
+		if err != nil {
+			return nil, err
+		}
+		files[name] = string(content)
+	}
+	return files, nil
 }
 
 func (p Problem) readFile(path string) ([]byte, error) {

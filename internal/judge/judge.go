@@ -74,25 +74,28 @@ func (r Runner) Run(ctx context.Context, problem problems.Problem, code string) 
 	if err != nil {
 		return Result{}, err
 	}
+	supportFiles, err := problem.ReadSupportFiles(r.ProblemsBaseDir)
+	if err != nil {
+		return Result{}, err
+	}
 
 	if problem.WritesTest {
-		return r.runWritesTest(ctx, problem, code, goMod, goSum)
+		return r.runWritesTest(ctx, problem, code, goMod, goSum, supportFiles)
 	}
-	return r.runImplementation(ctx, problem, code, goMod, goSum)
+	return r.runImplementation(ctx, problem, code, goMod, goSum, supportFiles)
 }
 
 // runImplementation は通常のレッスン（ユーザーが実装コードを書き、非公開テストで
 // 検証する形式）を採点する。
-func (r Runner) runImplementation(ctx context.Context, problem problems.Problem, code string, goMod, goSum []byte) (Result, error) {
+func (r Runner) runImplementation(ctx context.Context, problem problems.Problem, code string, goMod, goSum []byte, supportFiles map[string]string) (Result, error) {
 	testSrc, err := problem.ReadTestFile(r.ProblemsBaseDir)
 	if err != nil {
 		return Result{}, err
 	}
 
-	files := map[string]string{
-		"solution.go":      code,
-		"solution_test.go": string(testSrc),
-	}
+	files := cloneFiles(supportFiles)
+	files["solution.go"] = code
+	files["solution_test.go"] = string(testSrc)
 
 	passed, output, duration, timedOut, err := r.runOnce(ctx, goMod, goSum, files)
 	if err != nil {
@@ -122,7 +125,7 @@ func (r Runner) runImplementation(ctx context.Context, problem problems.Problem,
 //     今度は不合格になる（＝ユーザーのテストがバグを検出できる）ことを確認する
 //
 // 両方を満たして初めて合格とする。
-func (r Runner) runWritesTest(ctx context.Context, problem problems.Problem, code string, goMod, goSum []byte) (Result, error) {
+func (r Runner) runWritesTest(ctx context.Context, problem problems.Problem, code string, goMod, goSum []byte, supportFiles map[string]string) (Result, error) {
 	target, err := problem.ReadTarget(r.ProblemsBaseDir)
 	if err != nil {
 		return Result{}, err
@@ -136,10 +139,9 @@ func (r Runner) runWritesTest(ctx context.Context, problem problems.Problem, cod
 		return Result{}, err
 	}
 
-	baseFiles := map[string]string{
-		"solution_test.go": code,
-		"hidden_test.go":   string(hiddenTest),
-	}
+	baseFiles := cloneFiles(supportFiles)
+	baseFiles["solution_test.go"] = code
+	baseFiles["hidden_test.go"] = string(hiddenTest)
 
 	start := time.Now()
 
