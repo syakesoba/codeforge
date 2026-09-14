@@ -44,8 +44,8 @@ var undefinedPattern = regexp.MustCompile(`^undefined: (\w+)$`)
 // 先に解決しておくことで、imports.Process が「未知の識別子を探して失敗する」という
 // 一番コストの高い処理を避けられる。残りのstdlib解決や整形は最後の
 // imports.Process 1回にまとめて任せる（hints無しの場合は素直に1回呼ぶだけ）。
-func FixImports(ctx context.Context, goMod, goSum []byte, code string, hints []string, target []byte) (string, error) {
-	workdir, err := setupWorkspace(goMod, goSum, code, target)
+func FixImports(ctx context.Context, goMod, goSum []byte, code string, hints []string, target []byte, supportFiles map[string]string) (string, error) {
+	workdir, err := setupWorkspace(goMod, goSum, code, target, supportFiles)
 	if err != nil {
 		return "", err
 	}

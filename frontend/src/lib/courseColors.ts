@@ -14,7 +14,8 @@ export type CourseColorKey =
   | "emerald"
   | "orange"
   | "indigo"
-  | "cyan";
+  | "cyan"
+  | "lime";
 
 export type CourseColorClasses = {
   /** コースカード上部のアクセントバー */
@@ -84,5 +85,11 @@ export const courseColors: Record<CourseColorKey, CourseColorClasses> = {
     badge: "bg-cyan-100 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300",
     progress: "bg-cyan-500",
     border: "border-t-cyan-500",
+  },
+  lime: {
+    bar: "bg-lime-500",
+    badge: "bg-lime-100 text-lime-700 dark:bg-lime-950 dark:text-lime-300",
+    progress: "bg-lime-500",
+    border: "border-t-lime-500",
   },
 };

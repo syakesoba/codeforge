@@ -47,6 +47,16 @@ var diagnosticPattern = regexp.MustCompile(`^(?:\./)?([^:]+):(\d+):(\d+):\s*(.+)
 
 const checkTimeout = 8 * time.Second
 
+// CheckEnvironment は /check・/format に必要な go コマンドが使える状態かを確認します。
+// 起動時の確認と、レディネスチェック（/readyz）で使います。
+func CheckEnvironment(ctx context.Context) error {
+	out, err := exec.CommandContext(ctx, "go", "version").CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("go command is not available: %w: %s", err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
 // codeFilename は target の有無に応じて、ユーザーコードを配置するファイル名を返す。
 // target が指定されている場合（WritesTestレッスン）はテストとして実行されるよう
 // "_test.go" にする。
@@ -67,7 +77,11 @@ func codeFilename(target []byte) string {
 //
 // target が非nilの場合（WritesTestレッスン）は、ユーザーコードが参照する
 // 「正しい実装」を target.go として同じワークスペースに配置する。
-func setupWorkspace(goMod, goSum []byte, code string, target []byte) (dir string, err error) {
+//
+// supportFiles には、protoc生成コードのようにユーザーが編集しない追加の
+// 固定ファイル（ファイル名→内容）を渡せる。go build がそれらの型を
+// 解決できるよう、ユーザーコードと同じワークスペースに配置する。
+func setupWorkspace(goMod, goSum []byte, code string, target []byte, supportFiles map[string]string) (dir string, err error) {
 	workdir, err := os.MkdirTemp("", "lint-*")
 	if err != nil {
 		return "", fmt.Errorf("failed to create workspace: %w", err)
@@ -83,6 +97,9 @@ func setupWorkspace(goMod, goSum []byte, code string, target []byte) (dir string
 	if target != nil {
 		files["target.go"] = target
 	}
+	for name, content := range supportFiles {
+		files[name] = []byte(content)
+	}
 	for name, content := range files {
 		if err := os.WriteFile(filepath.Join(workdir, name), content, 0o644); err != nil {
 			os.RemoveAll(workdir)
@@ -96,8 +113,8 @@ func setupWorkspace(goMod, goSum []byte, code string, target []byte) (dir string
 // `go build`（WritesTestレッスンでは `go test -run=^$`）のみを実行して
 // コンパイルエラー（未インポート・未使用変数等）を収集します。
 // 採点用の非公開テストは含めません。
-func Check(ctx context.Context, goMod, goSum []byte, code string, target []byte) ([]Diagnostic, error) {
-	workdir, err := setupWorkspace(goMod, goSum, code, target)
+func Check(ctx context.Context, goMod, goSum []byte, code string, target []byte, supportFiles map[string]string) ([]Diagnostic, error) {
+	workdir, err := setupWorkspace(goMod, goSum, code, target, supportFiles)
 	if err != nil {
 		return nil, err
 	}

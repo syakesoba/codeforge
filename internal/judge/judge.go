@@ -35,6 +35,13 @@ type Runner struct {
 	ProblemsBaseDir string
 	Image           string
 	Timeout         time.Duration
+	// WorkDir は採点ワークスペースを作る親ディレクトリ。空ならOSの一時ディレクトリを使う。
+	//
+	// バックエンド自身をコンテナで動かし、ホストのDockerデーモン（ソケットをマウント）に
+	// 採点コンテナを起動させる構成では、`docker run -v` に渡すパスはホスト側で解決される。
+	// そのため、ホストとバックエンドのコンテナで同じパスになるようバインドマウントした
+	// ディレクトリを指定する必要がある。
+	WorkDir string
 }
 
 // NewRunner はデフォルト設定の Runner を作成します。
@@ -46,6 +53,16 @@ func NewRunner() Runner {
 		// stdlibのみの場合より余裕を持たせている。
 		Timeout: 30 * time.Second,
 	}
+}
+
+// runOutcome は runOnce 1回分（docker run 1回分）の実行結果です。
+type runOutcome struct {
+	passed   bool
+	output   string
+	duration time.Duration
+	timedOut bool
+	// buildFailed はテストを1件も実行する前にコンパイルが失敗したことを表す。
+	buildFailed bool
 }
 
 // Run はユーザーコードを problem の非公開テストとともにサンドボックス実行します。
@@ -74,40 +91,43 @@ func (r Runner) Run(ctx context.Context, problem problems.Problem, code string) 
 	if err != nil {
 		return Result{}, err
 	}
+	supportFiles, err := problem.ReadSupportFiles(r.ProblemsBaseDir)
+	if err != nil {
+		return Result{}, err
+	}
 
 	if problem.WritesTest {
-		return r.runWritesTest(ctx, problem, code, goMod, goSum)
+		return r.runWritesTest(ctx, problem, code, goMod, goSum, supportFiles)
 	}
-	return r.runImplementation(ctx, problem, code, goMod, goSum)
+	return r.runImplementation(ctx, problem, code, goMod, goSum, supportFiles)
 }
 
 // runImplementation は通常のレッスン（ユーザーが実装コードを書き、非公開テストで
 // 検証する形式）を採点する。
-func (r Runner) runImplementation(ctx context.Context, problem problems.Problem, code string, goMod, goSum []byte) (Result, error) {
+func (r Runner) runImplementation(ctx context.Context, problem problems.Problem, code string, goMod, goSum []byte, supportFiles map[string]string) (Result, error) {
 	testSrc, err := problem.ReadTestFile(r.ProblemsBaseDir)
 	if err != nil {
 		return Result{}, err
 	}
 
-	files := map[string]string{
-		"solution.go":      code,
-		"solution_test.go": string(testSrc),
-	}
+	files := cloneFiles(supportFiles)
+	files["solution.go"] = code
+	files["solution_test.go"] = string(testSrc)
 
-	passed, output, duration, timedOut, err := r.runOnce(ctx, goMod, goSum, files)
+	out, err := r.runOnce(ctx, goMod, goSum, files)
 	if err != nil {
 		return Result{}, err
 	}
-	if timedOut {
+	if out.timedOut {
 		return Result{
 			Passed:     false,
 			Output:     "実行時間の上限を超えたため停止しました。",
-			DurationMs: duration.Milliseconds(),
+			DurationMs: out.duration.Milliseconds(),
 			Error:      "timeout",
 		}, nil
 	}
 
-	return Result{Passed: passed, Output: output, DurationMs: duration.Milliseconds()}, nil
+	return Result{Passed: out.passed, Output: out.output, DurationMs: out.duration.Milliseconds()}, nil
 }
 
 // runWritesTest は「テストを書く」レッスン（ユーザーがテストコードを書き、
@@ -122,7 +142,7 @@ func (r Runner) runImplementation(ctx context.Context, problem problems.Problem,
 //     今度は不合格になる（＝ユーザーのテストがバグを検出できる）ことを確認する
 //
 // 両方を満たして初めて合格とする。
-func (r Runner) runWritesTest(ctx context.Context, problem problems.Problem, code string, goMod, goSum []byte) (Result, error) {
+func (r Runner) runWritesTest(ctx context.Context, problem problems.Problem, code string, goMod, goSum []byte, supportFiles map[string]string) (Result, error) {
 	target, err := problem.ReadTarget(r.ProblemsBaseDir)
 	if err != nil {
 		return Result{}, err
@@ -136,20 +156,13 @@ func (r Runner) runWritesTest(ctx context.Context, problem problems.Problem, cod
 		return Result{}, err
 	}
 
-	baseFiles := map[string]string{
-		"solution_test.go": code,
-		"hidden_test.go":   string(hiddenTest),
-	}
-
 	start := time.Now()
 
-	stage1Files := cloneFiles(baseFiles)
-	stage1Files["target.go"] = string(target)
-	stage1Passed, stage1Output, _, stage1TimedOut, err := r.runOnce(ctx, goMod, goSum, stage1Files)
+	stage1, err := r.runOnce(ctx, goMod, goSum, writesTestStageFiles(supportFiles, code, string(hiddenTest), string(target)))
 	if err != nil {
 		return Result{}, err
 	}
-	if stage1TimedOut {
+	if stage1.timedOut {
 		return Result{
 			Passed:     false,
 			Output:     "実行時間の上限を超えたため停止しました。",
@@ -157,22 +170,20 @@ func (r Runner) runWritesTest(ctx context.Context, problem problems.Problem, cod
 			Error:      "timeout",
 		}, nil
 	}
-	if !stage1Passed {
+	if !stage1.passed {
 		return Result{
 			Passed:     false,
-			Output:     stage1Output,
+			Output:     stage1.output,
 			DurationMs: time.Since(start).Milliseconds(),
 		}, nil
 	}
 
-	stage2Files := cloneFiles(baseFiles)
-	stage2Files["target.go"] = string(mutant)
-	stage2Passed, stage2Output, _, stage2TimedOut, err := r.runOnce(ctx, goMod, goSum, stage2Files)
+	stage2, err := r.runOnce(ctx, goMod, goSum, writesTestStageFiles(supportFiles, code, string(hiddenTest), string(mutant)))
 	if err != nil {
 		return Result{}, err
 	}
 	duration := time.Since(start)
-	if stage2TimedOut {
+	if stage2.timedOut {
 		return Result{
 			Passed:     false,
 			Output:     "実行時間の上限を超えたため停止しました。",
@@ -180,29 +191,80 @@ func (r Runner) runWritesTest(ctx context.Context, problem problems.Problem, cod
 			Error:      "timeout",
 		}, nil
 	}
-	if stage2Passed {
+	if stage2.buildFailed {
+		// Stage 1 と同じユーザーコード・非公開テストでコンパイルできているため、
+		// Stage 2 だけビルドに失敗するのは mutant.go 側（サーバーのコンテンツ）の不備。
+		// これを「バグを検出できた」と扱うと、どんなテストでも合格してしまうため
+		// サーバーエラーとして返す。
+		return Result{}, fmt.Errorf("stage 2 (mutant) failed to build for problem %q; check mutant.go:\n%s", problem.ID, stage2.output)
+	}
+	if stage2.passed {
 		return Result{
 			Passed: false,
 			Output: "テストは実行できましたが、わざとバグを仕込んだ実装でも合格してしまいました。\n" +
 				"期待値との比較や、一致しない場合に t.Errorf / t.Fatalf で失敗させる処理が" +
-				"正しく書けているか確認してください。\n\n" + stage2Output,
+				"正しく書けているか確認してください。\n\n" + stage2.output,
 			DurationMs: duration.Milliseconds(),
 			Error:      "insufficient_test",
 		}, nil
 	}
 
-	return Result{Passed: true, Output: stage1Output, DurationMs: duration.Milliseconds()}, nil
+	return Result{Passed: true, Output: stage1.output, DurationMs: duration.Milliseconds()}, nil
+}
+
+// writesTestStageFiles は WritesTest レッスンの1ステージ分のワークスペースに置く
+// ファイル（go.mod/go.sum を除く）を組み立てる。impl には Stage 1 では正しい実装、
+// Stage 2 ではバグを仕込んだ実装を渡し、どちらも target.go として配置する。
+func writesTestStageFiles(supportFiles map[string]string, code, hiddenTest, impl string) map[string]string {
+	files := cloneFiles(supportFiles)
+	files["solution_test.go"] = code
+	files["hidden_test.go"] = hiddenTest
+	files["target.go"] = impl
+	return files
 }
 
 // runOnce は1回分のワークスペースを作成し、Dockerサンドボックス内で
 // `go test -vet=off -json ./...` を実行する。
-func (r Runner) runOnce(ctx context.Context, goMod, goSum []byte, files map[string]string) (passed bool, output string, duration time.Duration, timedOut bool, err error) {
-	workdir, err := os.MkdirTemp("", "judge-*")
+func (r Runner) runOnce(ctx context.Context, goMod, goSum []byte, files map[string]string) (runOutcome, error) {
+	workdir, err := os.MkdirTemp(r.WorkDir, "judge-*")
 	if err != nil {
-		return false, "", 0, false, fmt.Errorf("failed to create workspace: %w", err)
+		return runOutcome{}, fmt.Errorf("failed to create workspace: %w", err)
 	}
 	defer os.RemoveAll(workdir)
 
+	// MkdirTemp は所有者だけが読める 0700 で作る。採点コンテナは別ユーザー
+	// （採点イメージの judge, uid 1000）で動くため、読めるように広げておく。
+	if err := os.Chmod(workdir, 0o755); err != nil {
+		return runOutcome{}, fmt.Errorf("failed to chmod workspace: %w", err)
+	}
+
+	if err := writeWorkspace(workdir, goMod, goSum, files); err != nil {
+		return runOutcome{}, err
+	}
+
+	runner := dockerRunner{Image: r.Image}
+	start := time.Now()
+	stdout, stderr, runErr := runner.run(ctx, workdir, r.Timeout)
+	duration := time.Since(start)
+
+	if errors.Is(runErr, errTimeout) {
+		return runOutcome{duration: duration, timedOut: true}, nil
+	}
+
+	// go test は「全テストがpassしたときだけ終了コード0」という契約を守るため、
+	// 合否判定はプロセスの終了コード（runErr）を正とする。JSON解析は表示用ログの
+	// 整形にのみ使う（fail イベントが出る前にプロセスがpanicで落ちるケースなどを
+	// 正しく不合格として扱うため）。
+	return runOutcome{
+		passed:      runErr == nil,
+		output:      formatGoTestOutput(stdout, stderr),
+		duration:    duration,
+		buildFailed: runErr != nil && isBuildFailure(stdout, stderr),
+	}, nil
+}
+
+// writeWorkspace は go.mod・go.sum（空でなければ）・files を dir に書き込む。
+func writeWorkspace(dir string, goMod, goSum []byte, files map[string]string) error {
 	allFiles := map[string]string{"go.mod": string(goMod)}
 	if len(goSum) > 0 {
 		allFiles["go.sum"] = string(goSum)
@@ -212,26 +274,11 @@ func (r Runner) runOnce(ctx context.Context, goMod, goSum []byte, files map[stri
 	}
 
 	for name, content := range allFiles {
-		if err := os.WriteFile(filepath.Join(workdir, name), []byte(content), 0o644); err != nil {
-			return false, "", 0, false, fmt.Errorf("failed to write %s: %w", name, err)
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
+			return fmt.Errorf("failed to write %s: %w", name, err)
 		}
 	}
-
-	runner := dockerRunner{Image: r.Image}
-	start := time.Now()
-	stdout, stderr, runErr := runner.run(ctx, workdir, r.Timeout)
-	duration = time.Since(start)
-
-	if errors.Is(runErr, errTimeout) {
-		return false, "", duration, true, nil
-	}
-
-	// go test は「全テストがpassしたときだけ終了コード0」という契約を守るため、
-	// 合否判定はプロセスの終了コード（runErr）を正とする。JSON解析は表示用ログの
-	// 整形にのみ使う（fail イベントが出る前にプロセスがpanicで落ちるケースなどを
-	// 正しく不合格として扱うため）。
-	output = formatGoTestOutput(stdout, stderr)
-	return runErr == nil, output, duration, false, nil
+	return nil
 }
 
 func readGoSumOrNil(problem problems.Problem, baseDir string) ([]byte, error) {

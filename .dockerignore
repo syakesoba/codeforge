@@ -3,7 +3,8 @@
 data
 docs
 frontend
-judge-image
+# judge-image/priming はバックエンドイメージでもモジュールキャッシュの焼き込みに使うため除外しない
+judge-image/Dockerfile
 *.log
 *.exe
 *.test

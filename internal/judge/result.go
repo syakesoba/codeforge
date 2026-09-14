@@ -13,6 +13,30 @@ type testEvent struct {
 	Action string
 	Test   string
 	Output string
+	// FailedBuild は、パッケージのビルド失敗によりテストを実行できなかった場合に
+	// "fail" イベントへ付与される（Go 1.24以降）。
+	FailedBuild string
+}
+
+// isBuildFailure は `go test -json` の出力から、テストを1件も実行する前に
+// コンパイルが失敗したかどうかを判定する。
+//
+// Go 1.24以降は "build-fail" イベントや "fail" イベントの FailedBuild で判定できる。
+// それより前の形式にも対応するため、`[build failed]` という go test の定型出力も見る。
+func isBuildFailure(stdout, stderr []byte) bool {
+	scanner := bufio.NewScanner(bytes.NewReader(stdout))
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	for scanner.Scan() {
+		var ev testEvent
+		if err := json.Unmarshal(scanner.Bytes(), &ev); err != nil {
+			continue
+		}
+		if ev.Action == "build-fail" || ev.FailedBuild != "" {
+			return true
+		}
+	}
+	const marker = "[build failed]"
+	return bytes.Contains(stdout, []byte(marker)) || bytes.Contains(stderr, []byte(marker))
 }
 
 const maxOutputBytes = 32 * 1024

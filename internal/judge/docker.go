@@ -7,11 +7,40 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
+	"strings"
 	"time"
 )
 
 var errTimeout = errors.New("execution timed out")
+
+// CheckEnvironment は採点に必要な環境（docker コマンド・Dockerデーモン・採点イメージ・
+// ワークスペースの親ディレクトリ）が使える状態かを確認します。
+// 起動時の確認と、レディネスチェック（/readyz）で使います。
+//
+// これらが欠けていても採点は「不合格」として返ってしまい気づきにくいため、
+// 事前に検知できるようにしています。
+func (r Runner) CheckEnvironment(ctx context.Context) error {
+	if _, err := exec.LookPath("docker"); err != nil {
+		return fmt.Errorf("docker command not found: %w", err)
+	}
+	out, err := exec.CommandContext(ctx, "docker", "image", "inspect", "--format", "{{.Id}}", r.Image).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("judge image %q is not available (is the Docker daemon running and the image built?): %w: %s",
+			r.Image, err, strings.TrimSpace(string(out)))
+	}
+	if r.WorkDir != "" {
+		info, err := os.Stat(r.WorkDir)
+		if err != nil {
+			return fmt.Errorf("judge work dir %q is not available: %w", r.WorkDir, err)
+		}
+		if !info.IsDir() {
+			return fmt.Errorf("judge work dir %q is not a directory", r.WorkDir)
+		}
+	}
+	return nil
+}
 
 // dockerRunner はサンドボックスコンテナ内で `go test` を実行します。
 type dockerRunner struct {

@@ -2,10 +2,37 @@
 package problems
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
 )
+
+// buildIgnoreTag は answer.go / mutant.go のような「サーバー側だけで扱い、
+// レッスンディレクトリで通常のビルド対象にしたくないファイル」の先頭に書く
+// ビルド制約です。
+const buildIgnoreTag = "//go:build ignore"
+
+// StripBuildIgnoreTag は src の先頭行が `//go:build ignore` であれば、その行と
+// 直後の空行1行を取り除いた内容を返します（CRLF改行にも対応）。
+// 先頭行がタグでなければ src をそのまま返します。
+//
+// 採点ワークスペースにコピーするときや、クライアントに返すときに使います。
+// タグを残したまま target.go 等として配置すると、そのファイルがビルドから
+// 除外されてしまうためです。
+func StripBuildIgnoreTag(src []byte) []byte {
+	first, rest, found := bytes.Cut(src, []byte("\n"))
+	if string(bytes.TrimRight(first, "\r")) != buildIgnoreTag {
+		return src
+	}
+	if !found {
+		return []byte{}
+	}
+	if blank, afterBlank, ok := bytes.Cut(rest, []byte("\n")); ok && len(bytes.TrimSpace(blank)) == 0 {
+		return afterBlank
+	}
+	return rest
+}
 
 // Problem は1つの演習問題を表します。
 type Problem struct {
@@ -17,6 +44,11 @@ type Problem struct {
 	// mutant.go（わざとバグを仕込んだ実装）の両方に対して行われる
 	// （internal/judge の2段階採点を参照）。
 	WritesTest bool
+	// SupportFiles は採点・エディタチェック用のワークスペースに常に同梱する
+	// 追加の固定ファイル名（レッスンディレクトリからの相対パス）。
+	// protocで事前生成した *.pb.go のような、ユーザーが編集しない既製コードを
+	// 使うレッスンで指定する。
+	SupportFiles []string
 }
 
 // allowlist はユーザーから渡される problemID を検証するための許可リストです。
@@ -263,6 +295,36 @@ var allowlist = map[string]Problem{
 		Title: "道場: 本番向けのHTTPサーバーを組み立てる",
 		Dir:   "deploy/05-capstone-production-server",
 	},
+	"grpc-01": {
+		ID:           "grpc-01",
+		Title:        "Unary RPCサーバーを実装する",
+		Dir:          "grpc/01-unary-rpc",
+		SupportFiles: []string{"greeter.pb.go", "greeter_grpc.pb.go"},
+	},
+	"grpc-02": {
+		ID:           "grpc-02",
+		Title:        "gRPCクライアントを実装する",
+		Dir:          "grpc/02-grpc-client",
+		SupportFiles: []string{"greeter.pb.go", "greeter_grpc.pb.go"},
+	},
+	"grpc-03": {
+		ID:           "grpc-03",
+		Title:        "ステータスコードでエラーを返す",
+		Dir:          "grpc/03-status-codes",
+		SupportFiles: []string{"calculator.pb.go", "calculator_grpc.pb.go"},
+	},
+	"grpc-04": {
+		ID:           "grpc-04",
+		Title:        "インターセプターで共通処理を挟む",
+		Dir:          "grpc/04-interceptors",
+		SupportFiles: []string{"greeter.pb.go", "greeter_grpc.pb.go"},
+	},
+	"grpc-05": {
+		ID:           "grpc-05",
+		Title:        "道場: ストリーミングRPCを実装する",
+		Dir:          "grpc/05-capstone-streaming",
+		SupportFiles: []string{"counter.pb.go", "counter_grpc.pb.go"},
+	},
 }
 
 // Get は problemID に対応する Problem を返します。存在しない場合は ok が false になります。
@@ -350,13 +412,42 @@ func (p Problem) ReadGoSum(baseDir string) ([]byte, error) {
 }
 
 // ReadTarget は（WritesTest問題の）正しい実装の中身を読み込みます。
+// 読み込んだ内容はワークスペースに target.go として配置されるため、
+// 先頭の `//go:build ignore` は取り除いて返します。
 func (p Problem) ReadTarget(baseDir string) ([]byte, error) {
-	return p.readFile(p.TargetPath(baseDir))
+	b, err := p.readFile(p.TargetPath(baseDir))
+	if err != nil {
+		return nil, err
+	}
+	return StripBuildIgnoreTag(b), nil
 }
 
 // ReadMutant は（WritesTest問題の）わざとバグを仕込んだ実装の中身を読み込みます。
+//
+// mutant.go はレッスンディレクトリでビルドされないよう `//go:build ignore` 付きで
+// 保存しているが、採点の Stage 2 では target.go として配置する。タグを残すと
+// target.go がビルドから除外されてコンパイルエラーになり、「ユーザーのテストが
+// バグを検出できた」のと区別がつかなくなる（どんなテストでも合格してしまう）
+// ため、タグを取り除いて返します。
 func (p Problem) ReadMutant(baseDir string) ([]byte, error) {
-	return p.readFile(p.MutantPath(baseDir))
+	b, err := p.readFile(p.MutantPath(baseDir))
+	if err != nil {
+		return nil, err
+	}
+	return StripBuildIgnoreTag(b), nil
+}
+
+// ReadSupportFiles は SupportFiles で指定された各ファイルの中身を読み込みます。
+func (p Problem) ReadSupportFiles(baseDir string) (map[string]string, error) {
+	files := make(map[string]string, len(p.SupportFiles))
+	for _, name := range p.SupportFiles {
+		content, err := p.readFile(filepath.Join(baseDir, p.Dir, name))
+		if err != nil {
+			return nil, err
+		}
+		files[name] = string(content)
+	}
+	return files, nil
 }
 
 func (p Problem) readFile(path string) ([]byte, error) {
