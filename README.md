@@ -65,12 +65,22 @@ cd frontend && npm run dev
 
 ブラウザで http://localhost:3000 を開きます。
 
-停止方法やトラブルシューティングを含む詳細は `docs/codeforge/setup.html` を参照してください（次項のとおりリポジトリには含まれません）。
+停止方法やトラブルシューティングを含む詳細は `docs/05-operations/setup.html` を参照してください（次項のとおりリポジトリには含まれません）。
 
 ## ドキュメント
 
-設計ドキュメント（概要・要件定義・実装プラン・詳細設計・起動方法）は `docs/codeforge/` 配下にHTMLとして用意していますが、
+設計ドキュメントは `docs/` 配下にHTMLとして用意していますが、
 `.gitignore` によりリポジトリには含めていません。必要な場合は開発者に直接お問い合わせください。
+
+```
+docs/
+  index.html               概要（入口）
+  01-requirements/         要件定義
+  02-plan/                 実装プラン
+  03-basic-design/         基本設計（全体構成・採点フロー・エディタ・認証・API・フロントエンド・セキュリティ）
+  04-detailed-design/      詳細設計（ソースコードベース。パッケージ・関数・定数単位）
+  05-operations/           起動方法・運用
+```
 
 ## ディレクトリ構成
 
@@ -84,7 +94,7 @@ internal/
 problems/            レッスンのコンテンツ（コース別）
 judge-image/         採点用Dockerイメージの定義
 frontend/            Next.jsフロントエンド
-docs/codeforge/      設計ドキュメント
+docs/                設計ドキュメント（リポジトリ管理外）
 ```
 
 ## ライセンス
